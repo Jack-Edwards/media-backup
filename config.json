@@ -1,0 +1,5 @@
+{
+  "source_path": "/mnt/PLEX Media",
+  "backup_path": "/media/jack/PLEX Media - Bac",
+  "libraries": [ "Movies", "Music", "TV Shows" ]
+}
