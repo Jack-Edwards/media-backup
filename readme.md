@@ -22,9 +22,9 @@ Command-line interface to help backup and maintain your media libraries.
     * **libraries** is a list of directories under the **source_path**
     * Examples:
         1. Backing up from a Linux PC to USB drive:
-            * **source_path** = "/home/jack"
-            * **libraries** = [ "Music", "Videos", "Pictures" ]
-            * **backup_path** = "/media/jack/BACKUP USB"
+            * **source_path** = "/home/<user>"
+            * **libraries** = [ "Music", "Videos" ]
+            * **backup_path** = "/media/<user>/BACKUP USB"
 4. Open a terminal or command window.  Use "cd" to navigate to the directory **above** the Media-Backup project folder.
 5. Run this command to run Media-Backup using Python 3.5 or higher:
     * python -m media-backup.run
@@ -44,19 +44,5 @@ Command-line interface to help backup and maintain your media libraries.
 * Debian 9.4 - Stretch using Python 3.5+
 * Ubuntu 16.04 - Xenial using Python 3.5+
 
-## Contribute
-* Pull requests are welcome:
-    * Improved support for other environments:
-        * Windows
-        * Mac
-        * Network backups
-    * Improved performance
-    * Run automatic maintenance as a cron job or scheduled task
-        * Somehow notify the user when problems are found
-    * Additional documentation
-    * Tests
-* Testing in other environments is extremely well.  Testing on Windows, Mac, and backups across a network has not been performed.
-
-## Contact
-* Email: jackedwards@protonmail.com
-* Twitter: @HowWasThisTaken
+## Run Unit Tests
+* python3 -m media-backup.tests.run_tests
