@@ -4,9 +4,9 @@ import os
 
 class MediaFile(object):
     def __init__(self, path, path_in_library, source):
-        self.name= os.path.basename(path)
+        self.name = os.path.basename(path)
         self.ext = os.path.splitext(self.name)[1]
-        self.source= source
+        self.source = source
         self.path = path
         self.path_in_library = path_in_library
         self.cache_file = os.path.join(
