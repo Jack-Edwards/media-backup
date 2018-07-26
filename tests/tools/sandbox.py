@@ -98,10 +98,11 @@ class Sandbox(object):
         #    'self.path' must be a valid path
         #  Guarantees
         #    The path and all it's contents will be deleted
-        #    'self.path' will be set to 'None'
+        #  Implementation Notes
+        #    All object properties are left intact
+        #    Do not continue testing with the sandbox after this method is called
 
         shutil.rmtree(self.path)
-        self.path = None
 
     def make_mirror_directory(self, mirror_type):
         #  Description
