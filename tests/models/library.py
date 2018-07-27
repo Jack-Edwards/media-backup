@@ -122,8 +122,66 @@ class LibraryTests(unittest.TestCase):
             video_list.remove(backup_library_object.media[media_file].path)
 
     def test_copy_media(self):
-        #  todo
-        self.assertTrue(False)
+        #  Make 'source' and 'backup' Library objects
+        source_library_object = library.Library('videos', True, self.source_video_library)
+        backup_library_object = library.Library('videos', False, self.backup_video_library)
+
+        #  Delete all backup media
+        for media_file in self.backup_video_list:
+            os.remove(media_file)
+        self.backup_video_list = []
+
+        #  Load the 'source' and 'backup' libraries
+        #  The 'backup' library should be empty
+        source_library_object.load_all_media()
+        backup_library_object.load_all_media()
+        self.assertEqual(len(source_library_object.media), 11)
+        self.assertEqual(len(backup_library_object.media), 0)
+
+        #  Copy all media from 'source' to 'backup'
+        #  Assert each copy action creates a new MediaFile object in the 'backup' library
+        for media_name, source_media_file_object in source_library_object.media.items():
+            backup_library_object.copy_media(
+                source_media_file_object.path,
+                media_name,
+                source_media_file_object.real_hash
+            )
+            self.assertTrue(media_name in backup_library_object.media)
+            backup_media_file_object = backup_library_object.media[media_name]
+            self.assertEqual(backup_media_file_object.real_hash, source_media_file_object.real_hash)
+            self.assertEqual(backup_media_file_object.cached_hash, source_media_file_object.cached_hash)
+            self.assertEqual(backup_media_file_object.cached_date, str(datetime.date.today()))
+            self.assertFalse(backup_media_file_object.cache_is_stale)
+
+        #  Delete all 'source' media
+        for media_file in self.source_video_list:
+            os.remove(media_file)
+        self.source_video_list = []
+
+        #  Empty the 'source' library's 'media' list
+        #  Assert both libraries have the expected number of items in their 'media' lists
+        source_library_object.media = {}
+        self.assertEqual(len(source_library_object.media), 0)
+        self.assertEqual(len(backup_library_object.media), 11)
+
+        #  Copy all media from 'backup' to 'source'
+        #  Assert each copy action creates a new MediaFile object in the 'source' library
+        for media_name, backup_media_file_object in backup_library_object.media.items():
+            source_library_object.copy_media(
+                backup_media_file_object.path,
+                media_name,
+                backup_media_file_object.real_hash
+            )
+            self.assertTrue(media_name in source_library_object.media)
+            source_media_file_object = source_library_object.media[media_name]
+            self.assertEqual(source_media_file_object.real_hash, backup_media_file_object.real_hash)
+            self.assertEqual(source_media_file_object.cached_hash, backup_media_file_object.cached_hash)
+            self.assertEqual(source_media_file_object.cached_date, str(datetime.date.today()))
+            self.assertFalse(source_media_file_object.cache_is_stale)        
+
+        #  Assert both libraries have the expected number of items in their 'media' lists
+        self.assertEqual(len(source_library_object.media), 11)
+        self.assertEqual(len(backup_library_object.media), 11)
 
     def test_delete_media(self):
         #  todo
