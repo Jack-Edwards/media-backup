@@ -137,4 +137,9 @@ class Library(object):
                 yield dirpath
 
     def delete_orphan_cache_files(self):
+        #  todo
+        pass
+
+    def yield_orphan_cache_files(self):
+        #  todo
         pass
