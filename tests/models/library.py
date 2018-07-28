@@ -184,9 +184,48 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(len(backup_library_object.media), 11)
 
     def test_delete_media(self):
-        #  todo
-        self.assertTrue(False)
+        #  Make 'source' and 'backup' Library objects
+        source_library_object = library.Library('videos', True, self.source_video_library)
+        backup_library_object = library.Library('videos', False, self.backup_video_library)
 
+        #  Load the 'source' and 'backup' libraries
+        source_library_object.load_all_media()
+        backup_library_object.load_all_media()
+
+        #  Assert the libraries actually contain media files
+        self.assertEqual(len(source_library_object.media), 11)
+        self.assertEqual(len(backup_library_object.media), 11)
+
+        #  Set a reference to the first media file in each library
+        source_file_name = next(iter(source_library_object.media))
+        backup_file_name = next(iter(backup_library_object.media))
+        source_file = source_library_object.media[source_file_name]
+        backup_file = backup_library_object.media[backup_file_name]
+
+        #  Generate a cache file for one file in each library
+        source_file.save_hash_to_file(False)
+        backup_file.save_hash_to_file(False)
+
+        #  Assert the cache files exist
+        self.assertTrue(os.path.exists(source_file.cache_file))
+        self.assertTrue(os.path.exists(backup_file.cache_file))
+
+        #  Delete both media
+        source_library_object.delete_media(source_file_name)
+        backup_library_object.delete_media(backup_file_name)
+
+        #  Assert both media and both cache files no longer exist on the disc
+        self.assertFalse(os.path.exists(source_file.path))
+        self.assertFalse(os.path.exists(backup_file.path))
+        self.assertFalse(os.path.exists(source_file.cache_file))
+        self.assertFalse(os.path.exists(backup_file.cache_file))
+
+        #  Assert neither media exist in their libraries any more
+        self.assertFalse(source_file_name in source_library_object.media.keys())
+        self.assertFalse(backup_file_name in backup_library_object.media.keys())
+        self.assertEqual(len(source_library_object.media), 10)
+        self.assertEqual(len(backup_library_object.media), 10)
+        
     def test_folder_media(self):
         #  todo
         self.assertTrue(False)

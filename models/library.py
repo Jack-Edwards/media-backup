@@ -38,7 +38,7 @@ class Library(object):
         #  Verify the library's path exists
         if os.path.exists(self.path):
             self.media.clear()  # Reset 'self.media'; old entries might no longer exist
-            for dirpath, dirnames, filenames in os.walk(self.path):
+            for dirpath, _, filenames in os.walk(self.path):
                 if '.cache' not in dirpath:
                     if len(filenames) > 0:
                         for filename in filenames:
@@ -77,11 +77,64 @@ class Library(object):
             raise FileNotFoundError('File does not exist')
 
     def delete_media(self, path_in_library):
+        #  Description
+        #    Delete a media file from the library
+        #  Requires
+        #    'path_in_library' must be a key in 'self.media'
+        #  Guarantees
+        #    The media file is removed from the filesystem
+        #    The media file's cache file is removed from the filesystem, if it exists
+        #    The reference to the media file is removed from 'self.media'
+        #  Implementation Notes
+        #    The method allows media to be deleted from 'source' libraries
+        #    This is a necessary step when restoring a file from 'backup'
+        #    The 'source' file must be deleted before copying from 'backup'
+
         #  Verify the file exists
         file = self.media[path_in_library]
         if os.path.exists(file.path):
-            os.remove(file.cache_file)
+            if os.path.exists:
+                os.remove(file.cache_file)
             os.remove(file.path)
             self.media.pop(path_in_library)
         else:
             raise FileNotFoundError('File does not exist')
+
+    def delete_empty_directories(self):
+        #  Description
+        #    Delete all empty directories in the library
+        #  Requires
+        #    'self.path' must exist on the filesystem
+        #  Guarantees
+        #    All empty directories under 'self.path' are removed from the disc
+        #    An 'empty' directory has no files or sub-directories
+        #  Implementation Notes
+        #    Reason for the 'while' loop is for case where deleting a directory
+        #    creates an empty directory
+        
+        while True:
+            empty_directories = list()
+            for dir in self.yield_empty_directories():
+                empty_directories.append(dir)
+
+            if len(empty_directories) > 0:
+                for dir in empty_directories:
+                    os.rmdir(dir)
+            else:
+                break       
+
+    def yield_empty_directories(self):
+        #  Description
+        #    A generator to return the path of all empty directories in the library
+        #  Requires
+        #    'self.path' must exist on the filesystem
+        #    A directory is not removed or added until the generator is finished
+        #  Guarantees
+        #    The path to all empty directories in 'self.path' is returned, one at a time
+
+        for dirpath, dirnames, filenames in os.walk(self.path):
+            if len (dirnames) == 0 and len(filenames) == 0:
+                yield dirpath
+
+    def delete_orphan_cache_files(self):
+        pass

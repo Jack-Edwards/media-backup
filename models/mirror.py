@@ -72,49 +72,49 @@ class MirrorManager(object):
     @property
     def orphan_cache_file_count(self):
         count = 0
-        for item in self.yield_orphan_cache_files():
+        for _ in self.yield_orphan_cache_files():
             count += 1
         return count
 
     @property
     def empty_directory_count(self):
         count = 0
-        for item in self.yield_empty_directories():
+        for _ in self.yield_empty_directories():
             count += 1
         return count
 
     @property
     def source_media_not_backed_up_count(self):
         count = 0
-        for item in self.yield_source_media_not_backed_up():
+        for _ in self.yield_source_media_not_backed_up():
             count += 1
         return count
 
     @property
     def orphan_backup_media_count(self):
         count = 0
-        for item in self.yield_orphan_backup_media():
+        for _ in self.yield_orphan_backup_media():
             count += 1
         return count
 
     @property
     def media_with_stale_cache_count(self):
         count = 0
-        for item in self.yield_media_with_stale_cache():
+        for _ in self.yield_media_with_stale_cache():
             count += 1
         return count
 
     @property
     def media_with_local_checksum_error_count(self):
         count = 0
-        for item in self.yield_media_with_local_checksum_error():
+        for _ in self.yield_media_with_local_checksum_error():
             count += 1
         return count
 
     @property
     def media_with_mirror_checksum_error_count(self):
         count = 0
-        for item in self.yield_media_with_mirror_checksum_error():
+        for _ in self.yield_media_with_mirror_checksum_error():
             count += 1
         return count
 
@@ -222,7 +222,7 @@ class MirrorManager(object):
             for mirror in mirrors:
                 for library in self.libraries:
                     path = mirror.libraries[library].path
-                    for dirpath, dirnames, filenames in os.walk(path):
+                    for dirpath, _, filenames in os.walk(path):
                         if '.cache' in dirpath:
                             if len(filenames) > 0:
                                 for file in filenames:
