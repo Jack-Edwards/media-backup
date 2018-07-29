@@ -4,95 +4,139 @@ import datetime
 import os
 import shutil
 
+from ..tools import sandbox
 from ...models import mediafile
 
 class MediaFileTests(unittest.TestCase):
+    #  Run before/after every unit test
+
     def setUp(self):
-        #  Create a temporary sandbox dir
-        self.sandbox = tempfile.mkdtemp()
+        #  Create a sandbox in a temporary (safe) directory
+        self.sandbox = sandbox.Sandbox()
+        self.sandbox.create()
 
-        #  Create a 'source' mirror
-        self.source = os.path.join(self.sandbox, 'source')
-        os.mkdir(self.source)
+        #  Create mock video file(s) in the source 'Videos' library
+        self.source_mock_file = self.sandbox.make_media('mock.mkv', 'source bits', 'Videos', True)
+        self.source_mock_file_in_dir = self.sandbox.make_media('dir/mock.mkv', 'source bits', 'Videos', True)
 
-        #  Create a 'videos' library in the 'source' mirror
-        self.source_video_library = os.path.join(self.source, 'videos')
-        os.mkdir(self.source_video_library)
-
-        #  Create a mock video put it in the source 'videos' library
-        self.source_video_file = os.path.join(self.source_video_library, 'mock.mkv')
-        with open(self.source_video_file, 'w') as video_file:
-            video_file.write('source bits')
-
-        #  Create a 'backup' mirror
-        self.backup = os.path.join(self.sandbox, 'backup')
-        os.mkdir(self.backup)
-
-        #  Create a 'videos' library in the 'backup' mirror
-        self.backup_video_library = os.path.join(self.backup, 'videos')
-        os.mkdir(self.backup_video_library)
-
-        #  Create a mock video put it in the backup 'videos' library
-        self.backup_video_file = os.path.join(self.backup_video_library, 'mock.mkv')
-        with open(self.backup_video_file, 'w') as video_file:
-            video_file.write('backup bits')
+        #  Create mock video file(s) in the backup 'Videos' library
+        self.backup_mock_file = self.sandbox.make_media('mock.mkv', 'backup bits', 'Videos', False)
+        self.backup_mock_file_in_dir = self.sandbox.make_media('dir/mock.mkv', 'backup bits', 'Videos', False)
 
     def tearDown(self):
-        shutil.rmtree(self.sandbox)
+        self.sandbox.destroy()
+
+    #  Unit tests
 
     def test_init_source_media(self):
-        #  Make a MediaFile object
-        media_file = mediafile.MediaFile(self.source_video_file, 'videos/mock.mkv', True)
+        MediaFileTestMethods().init_media_file(self.source_mock_file)
 
-        #  Assert default properties are as expected
-        self.assertEqual(media_file.path, self.source_video_file)
-        self.assertEqual(media_file.path_in_library, 'videos/mock.mkv')
-        self.assertEqual(media_file.ext, '.mkv')
-        self.assertTrue(media_file.source)
-        fully_qualified_cache_file_path = os.path.join(self.source_video_library, '.cache/mock.mkv.txt')
-        self.assertEqual(media_file.cache_file, fully_qualified_cache_file_path)
+    def test_init_source_media_in_directory(self):
+        MediaFileTestMethods().init_media_file(self.source_mock_file_in_dir)
 
     def test_init_backup_media(self):
+        MediaFileTestMethods().init_media_file(self.backup_mock_file)
+
+    def test_init_backup_media_in_directory(self):
+        MediaFileTestMethods().init_media_file(self.backup_mock_file_in_dir)
+
+    def test_source_real_checksum(self):
+        MediaFileTestMethods().real_checksum(
+            self.source_mock_file,
+            '1a571c4ef14eb5de03dcc5dfb6faa716c74759eb',
+        )
+
+    def test_source_real_checksum_in_directory(self):
+        MediaFileTestMethods().real_checksum(
+            self.source_mock_file_in_dir,
+            '1a571c4ef14eb5de03dcc5dfb6faa716c74759eb',
+        )
+
+    def test_backup_real_checksum(self):
+        MediaFileTestMethods().real_checksum(
+            self.backup_mock_file,
+            '3614f5ce63f53e30693d6e0e7be976d2d932f274',
+        )
+
+    def test_backup_real_checksum_in_directory(self):
+        MediaFileTestMethods().real_checksum(
+            self.backup_mock_file_in_dir,
+            '3614f5ce63f53e30693d6e0e7be976d2d932f274',
+        )
+
+    def test_source_cached_checksum(self):
+        MediaFileTestMethods().cached_checksum(
+            self.source_mock_file,
+            '1a571c4ef14eb5de03dcc5dfb6faa716c74759eb'
+        )
+
+    def test_source_cached_checksum_in_directory(self):
+        MediaFileTestMethods().cached_checksum(
+            self.source_mock_file_in_dir,
+            '1a571c4ef14eb5de03dcc5dfb6faa716c74759eb'
+        )
+
+    def test_backup_cached_checksum(self):
+        MediaFileTestMethods().cached_checksum(
+            self.backup_mock_file,
+            '3614f5ce63f53e30693d6e0e7be976d2d932f274'
+        )
+
+    def test_backup_cached_checksum_in_directory(self):
+        MediaFileTestMethods().cached_checksum(
+            self.backup_mock_file_in_dir,
+            '3614f5ce63f53e30693d6e0e7be976d2d932f274'
+        )
+
+    def test_source_cached_checksum_date(self):
+        MediaFileTestMethods().cached_checksum_date(self.source_mock_file)
+
+    def test_backup_cached_checksum_date(self):
+        MediaFileTestMethods().cached_checksum_date(self.backup_mock_file)
+
+class MediaFileTestMethods(unittest.TestCase):
+    #  Re-usable methods
+    
+    def init_media_file(self, mock_file):
         #  Make a MediaFile object
-        media_file = mediafile.MediaFile(self.backup_video_file, 'videos/mock.mkv', False)
+        media_file = mediafile.MediaFile(
+            mock_file.path,
+            mock_file.name,
+            False
+        )
 
         #  Assert default properties are as expected
-        self.assertEqual(media_file.path, self.backup_video_file)
-        self.assertEqual(media_file.path_in_library, 'videos/mock.mkv')
+        self.assertEqual(media_file.path, mock_file.path)
+        self.assertEqual(media_file.path_in_library, mock_file.name)
         self.assertEqual(media_file.ext, '.mkv')
         self.assertFalse(media_file.source)
-        fully_qualified_cache_file_path = os.path.join(self.backup_video_library, '.cache/mock.mkv.txt')
-        self.assertEqual(media_file.cache_file, fully_qualified_cache_file_path)
 
-    def test_real_checksum(self):
-        #  Make a 'source' MediaFile object
-        source_media_file = mediafile.MediaFile(self.source_video_file, 'videos/mock.mkv', True)
+        mock_file_dirname = os.path.dirname(mock_file.path)
+        mock_file_cache_file = os.path.join(
+            mock_file_dirname,
+            '.cache',
+            '{}.txt'.format(os.path.basename(mock_file.name))
+        )
 
-        #  Assert the checksum is as expected
-        self.assertEqual(source_media_file.real_hash, '1a571c4ef14eb5de03dcc5dfb6faa716c74759eb')
+        self.assertEqual(media_file.cache_file, mock_file_cache_file)
 
+    def real_checksum(self, mock_file, checksum):
         #  Make a 'backup' MediaFile object
-        backup_media_file = mediafile.MediaFile(self.backup_video_file, 'videos/mock.mkv', True)
+        backup_media_file = mediafile.MediaFile(mock_file.path, mock_file.name, False)
 
         #  Assert the checksum is as expected
-        self.assertEqual(backup_media_file.real_hash, '3614f5ce63f53e30693d6e0e7be976d2d932f274')
+        self.assertEqual(backup_media_file.real_hash, checksum)
 
-    def test_cached_checksum(self):
-        #  Make a 'source' MediaFile object
-        source_media_file = mediafile.MediaFile(self.source_video_file, 'videos/mock.mkv', True)
-
-        #  Assert the cached checksum is as expected
-        self.assertEqual(source_media_file.cached_hash, '1a571c4ef14eb5de03dcc5dfb6faa716c74759eb')
-
-        #  Make a 'backup' MediaFile object
-        backup_media_file = mediafile.MediaFile(self.backup_video_file, 'videos/mock.mkv', True)
-
-        #  Assert the checksum is as expected
-        self.assertEqual(backup_media_file.cached_hash, '3614f5ce63f53e30693d6e0e7be976d2d932f274')
-
-    def test_cached_checksum_date(self):
+    def cached_checksum(self, mock_file, checksum):
         #  Make a MediaFile object
-        media_file = mediafile.MediaFile(self.source_video_file, 'videos/mock.mkv', True)
+        media_file = mediafile.MediaFile(mock_file.path, mock_file.name, False)
+
+        #  Assert the checksum is as expected
+        self.assertEqual(media_file.cached_hash, checksum)
+
+    def cached_checksum_date(self, mock_file):
+        #  Make a MediaFile object
+        media_file = mediafile.MediaFile(mock_file.path, mock_file.name, True)
 
         #  Assert the generated cache date is today
         today = str(datetime.date.today())

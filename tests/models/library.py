@@ -279,6 +279,8 @@ class LibraryTests(unittest.TestCase):
         self.assertFalse(media_file_name in source_library_object.media.keys())
         self.assertEqual(len(source_library_object.media), len(self.source_video_list))
 
+        #  todo - test 'copy_media()'
+
     def test_ignored_file_extensions(self):
         #  Make a 'source' library object
         source_library_object = library.Library('videos', True, self.source_video_library)
