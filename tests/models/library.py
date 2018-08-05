@@ -44,8 +44,29 @@ class LibraryTests(unittest.TestCase):
         media_in_library = self.unique_backup_files + self.matching_backup_files
         LibraryTestMethods().load_all_media(self.sandbox.backup_videos_library, media_in_library)
 
-    def test_copy_media(self):
-        pass
+    def test_copy_new_media_to_source_video_library(self):
+        LibraryTestMethods().copy_new_media(
+            self.sandbox.source_videos_library,
+            self.sandbox.backup_videos_library
+        )
+
+    def test_copy_new_media_to_backup_source_video_library(self):
+        LibraryTestMethods().copy_new_media(
+            self.sandbox.backup_videos_library,
+            self.sandbox.source_videos_library
+        )
+
+    def test_copy_existing_media_to_source_video_library(self):
+        LibraryTestMethods().copy_existing_media(
+            self.sandbox.source_videos_library,
+            self.sandbox.backup_videos_library
+        )
+
+    def test_copy_existing_media_to_backup_video_library(self):
+        LibraryTestMethods().copy_existing_media(
+            self.sandbox.backup_videos_library,
+            self.sandbox.source_videos_library
+        )
 
     def test_delete_media(self):
         return
@@ -218,65 +239,82 @@ class LibraryTestMethods(unittest.TestCase):
             #  to prove the same media is not returned more than once
             media_in_library.remove(list(filter(lambda x: x.name == media_name, media_in_library))[0])
 
-    def copy_new_media(self, mock_library: sandbox.MockLibrary, media_in_library: list):
-        return
-        #  Make 'source' and 'backup' Library objects
-        source_library_object = library.Library('videos', True, self.source_video_library)
-        backup_library_object = library.Library('videos', False, self.backup_video_library)
+    def copy_new_media(self, target_mock_library: sandbox.MockLibrary, other_mock_library: sandbox.MockLibrary):
+        #  Make a pair of Library objects
+        target_library_object = library.Library(target_mock_library.name, target_mock_library.path, target_mock_library.source)
+        other_library_object = library.Library(other_mock_library.name, other_mock_library.path, other_mock_library.source)
 
-        #  Delete all backup media
-        for media_file in self.backup_video_list:
-            os.remove(media_file)
-        self.backup_video_list = []
+        #  Load the Library objects
+        target_library_object.load_all_media()
+        other_library_object.load_all_media()
 
-        #  Load the 'source' and 'backup' libraries
-        #  The 'backup' library should be empty
-        source_library_object.load_all_media()
-        backup_library_object.load_all_media()
-        self.assertEqual(len(source_library_object.media), len(self.source_video_list))
-        self.assertEqual(len(backup_library_object.media), 0)
+        original_target_media_count = len(target_library_object.media)
 
-        #  Copy all media from 'source' to 'backup'
-        #  Assert each copy action creates a new MediaFile object in the 'backup' library
-        for media_name, source_media_file_object in source_library_object.media.items():
-            backup_library_object.copy_media(
-                source_media_file_object.path,
-                media_name,
-                source_media_file_object.real_hash
-            )
-            self.assertTrue(media_name in backup_library_object.media)
-            backup_media_file_object = backup_library_object.media[media_name]
-            self.assertEqual(backup_media_file_object.real_hash, source_media_file_object.real_hash)
-            self.assertEqual(backup_media_file_object.cached_hash, source_media_file_object.cached_hash)
-            self.assertEqual(backup_media_file_object.cached_date, str(datetime.date.today()))
-            self.assertFalse(backup_media_file_object.cache_is_stale)
+        #  Copy media to 'target' that only exist in 'other'
+        #  Assert each Library.copy_media() action creates a new MediaFile object in the 'target' library
+        copy_count = 0
+        for media_name in other_library_object.media:
+            if media_name not in target_library_object.media:
+                copy_count += 1
+                target_library_object.copy_media(
+                    other_library_object.media[media_name].path,
+                    other_library_object.media[media_name].path_in_library,
+                    other_library_object.media[media_name].real_hash
+                )
 
-        #  Delete all 'source' media
-        for media_file in self.source_video_list:
-            os.remove(media_file)
-        self.source_video_list = []
+                #  Assertions
+                self.assertTrue(media_name in target_library_object.media)
+                self.assertEqual(
+                    target_library_object.media[media_name].path_in_library,
+                    other_library_object.media[media_name].path_in_library
+                )
+                self.assertTrue(os.path.exists(target_library_object.media[media_name].path))
+                self.assertEqual(
+                    target_library_object.media[media_name].real_hash,
+                    other_library_object.media[media_name].real_hash
+                )
+                self.assertNotEqual(
+                    target_library_object.media[media_name].cache_file,
+                    other_library_object.media[media_name].cache_file
+                )
+                self.assertEqual(
+                    target_library_object.media[media_name].cached_hash,
+                    other_library_object.media[media_name].cached_hash
+                )
+                self.assertEqual(
+                    target_library_object.media[media_name].cached_date,
+                    str(datetime.date.today())
+                )
+        #  Verify the above 'for' loop actually copied something
+        #  Sandbox.populate_library_with_unique_media() adds 12 files
+        self.assertEqual(copy_count, 12)  #  If this fails, the whole test was a dud
+        self.assertEqual(len(target_library_object.media), original_target_media_count + copy_count)
 
-        #  Empty the 'source' library's 'media' list
-        #  Assert both libraries have the expected number of items in their 'media' lists
-        source_library_object.media = {}
-        self.assertEqual(len(source_library_object.media), 0)
-        self.assertEqual(len(backup_library_object.media), 11)
+    def copy_existing_media(self, target_mock_library: sandbox.MockLibrary, other_mock_library: sandbox.MockLibrary):
+        #  Make a pair of Library objects
+        target_library_object = library.Library(target_mock_library.name, target_mock_library.path, target_mock_library.source)
+        other_library_object = library.Library(other_mock_library.name, other_mock_library.path, other_mock_library.source)
 
-        #  Copy all media from 'backup' to 'source'
-        #  Assert each copy action creates a new MediaFile object in the 'source' library
-        for media_name, backup_media_file_object in backup_library_object.media.items():
-            source_library_object.copy_media(
-                backup_media_file_object.path,
-                media_name,
-                backup_media_file_object.real_hash
-            )
-            self.assertTrue(media_name in source_library_object.media)
-            source_media_file_object = source_library_object.media[media_name]
-            self.assertEqual(source_media_file_object.real_hash, backup_media_file_object.real_hash)
-            self.assertEqual(source_media_file_object.cached_hash, backup_media_file_object.cached_hash)
-            self.assertEqual(source_media_file_object.cached_date, str(datetime.date.today()))
-            self.assertFalse(source_media_file_object.cache_is_stale)        
+        #  Load the Library objects
+        target_library_object.load_all_media()
+        other_library_object.load_all_media()
 
-        #  Assert both libraries have the expected number of items in their 'media' lists
-        self.assertEqual(len(source_library_object.media), 11)
-        self.assertEqual(len(backup_library_object.media), 11)
+        original_target_media_count = len(target_library_object.media)
+
+        #  Attempt to copy media from 'other' that already exists on the 'target'
+        #  Assert the file is /not/ copied
+        copy_count = 0
+        for media_name in other_library_object.media:
+            if media_name in target_library_object.media:
+                copy_count += 1
+                with self.assertRaises(FileExistsError):
+                    target_library_object.copy_media(
+                        other_library_object.media[media_name].path,
+                        other_library_object.media[media_name].path_in_library,
+                        other_library_object.media[media_name].real_hash
+                    )
+                self.assertTrue(media_name in target_library_object.media)
+                self.assertTrue(os.path.exists(target_library_object.media[media_name].path))
+                #  todo - verify the file's last write datetime doesn't change (?)
+                
+        self.assertEqual(len(target_library_object.media), original_target_media_count)
