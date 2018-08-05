@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from .mediafile import MediaFile
+from .media_file import MediaFile
 
 class Library(object):
     def __init__(self, name, source, path):

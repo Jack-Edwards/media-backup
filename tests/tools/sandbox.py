@@ -144,7 +144,6 @@ class Sandbox(object):
 
 class MockMediaFile(object):
     def __init__(self, name, path, library_name, is_source):
-
         self.name = name
         self.path = path
         self.library_name = library_name

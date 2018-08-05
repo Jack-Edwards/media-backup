@@ -1,6 +1,6 @@
 import unittest
 
-from .models.mediafile import MediaFileTests
+from .models.media_file import MediaFileTests
 from .models.library import LibraryTests
 
 if __name__ == '__main__':
