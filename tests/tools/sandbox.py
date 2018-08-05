@@ -3,6 +3,20 @@ import os
 import shutil
 import tempfile
 
+
+class MockMediaFile(object):
+    def __init__(self, name: str, path: str, library_name: str, source: bool):
+        self.name = name
+        self.path = path
+        self.library_name = library_name
+        self.source = source
+
+class MockLibrary(object):
+    def __init__(self, name: str, path: str, source: str):
+        self.name = name
+        self.path = path
+        self.source = source
+
 class Sandbox(object):
     def __init__(self):
         self.path = None
@@ -22,13 +36,17 @@ class Sandbox(object):
 
         self.path = tempfile.mkdtemp()
 
+        #  Add mirrors to the sandbox
         self.source_mirror = self.make_mirror(True)
-        self.source_video_library = self.make_library('Videos', True)
+        self.backup_mirror = self.make_mirror(False)
+
+        #  Add libraries to the sandbox
+        self.source_videos_library = self.make_library('Videos', True)
         self.source_music_library = self.make_library('Music', True)
 
-        self.backup_mirror = self.make_mirror(False)
-        self.backup_video_library = self.make_library('Videos', False)
-        self.backup_video_library = self.make_library('Music', False)
+        self.backup_videos_library = self.make_library('Videos', False)
+        self.backup_music_library = self.make_library('Music', False)
+
 
     def destroy(self):
         #  Description
@@ -43,7 +61,7 @@ class Sandbox(object):
 
         shutil.rmtree(self.path)
 
-    def make_mirror(self, is_source):
+    def make_mirror(self, source: bool):
         #  Description
         #    Make a 'mirror' directory in the sandbox
         #    Return a path to the directory
@@ -52,7 +70,7 @@ class Sandbox(object):
         #  Guarantees
         #    The 'mirror' directory is created and returned
 
-        source_string = 'source' if is_source else 'backup'
+        source_string = 'source' if source else 'backup'
         mirror_path = os.path.join(self.path, source_string)
 
         if os.path.exists(mirror_path):
@@ -61,7 +79,7 @@ class Sandbox(object):
         os.mkdir(mirror_path)
         return mirror_path
 
-    def get_mirror(self, is_source):
+    def get_mirror_path(self, source: bool):
         #  Description
         #    Get the path to the matching mirror
         #  Requires
@@ -69,7 +87,7 @@ class Sandbox(object):
         #  Guarantees
         #    The path to the matching mirror is returned
 
-        source_string = 'source' if is_source else 'backup'
+        source_string = 'source' if source else 'backup'
         mirror_path = os.path.join(self.path, source_string)
 
         if not os.path.exists(mirror_path):
@@ -77,7 +95,7 @@ class Sandbox(object):
 
         return mirror_path           
 
-    def make_library(self, library_name, is_source):
+    def make_library(self, library_name: str, source: bool):
         #  Description
         #    Make a 'library' directory in the matching mirror
         #    Return a path to the directory
@@ -86,34 +104,20 @@ class Sandbox(object):
         #  Guarantees
         #    The 'library' directory is created and returned
 
-        mirror_path = self.get_mirror(is_source)
+        mirror_path = self.get_mirror_path(source)
         library_path = os.path.join(mirror_path, library_name)
 
         if os.path.exists(library_path):
             raise FileExistsError('Library already exists in mirror')
 
         os.mkdir(library_path)
-        return library_path
-
-    def get_library(self, library_name, is_source):
-        #  Description
-        #    Get the path to the matching library in the matching mirror
-        #  Requires
-        #    n/a
-        #  Guarantees
-        #    The path to the matching library is returned
-
-        mirror_path = self.get_mirror(is_source)
-        if not os.path.exists(mirror_path):
-            raise FileNotFoundError('Mirror does not exist in sandbox')
-
-        library_path = os.path.join(mirror_path, library_name)
-        if not os.path.exists(library_path):
-            raise FileNotFoundError('Library does not exist in mirror')
-
-        return library_path
+        return MockLibrary(
+            name = library_name,
+            path = library_path,
+            source = source
+        )
             
-    def make_media(self, media_name, file_text, library_name, is_source):
+    def make_media(self, media_name: str, file_text: str, mock_library: MockLibrary):
         #  Description
         #    Make a mock 'media file' directory in the matching library
         #    Return an object containing:
@@ -121,12 +125,11 @@ class Sandbox(object):
         #     - absolute file path
         #     - checksum
         #  Requires
-        #    The 'library' directory must already exist
+        #    The 'library' must already exist
         #  Guarantees
         #    The mock 'media file' is created and returned
 
-        library_path = self.get_library(library_name, is_source)
-        media_path = os.path.join(library_path, media_name)
+        media_path = os.path.join(mock_library.path, media_name)
 
         if os.path.exists(media_path):
             raise FileExistsError('Media already exists in library')
@@ -138,13 +141,68 @@ class Sandbox(object):
         return MockMediaFile(
             name = media_name,
             path = media_path,
-            library_name = library_name,
-            is_source = is_source
+            library_name = mock_library.name,
+            source = mock_library.source
         )
 
-class MockMediaFile(object):
-    def __init__(self, name, path, library_name, is_source):
-        self.name = name
-        self.path = path
-        self.library_name = library_name
-        self.is_source = is_source
+    def populate_library_with_unique_media(self, mock_library: MockLibrary):
+        #  Description
+        #    Add 12 files to the target library
+        #    These files will not exist in the other/mirror library
+        #    Return a list of MockMediaFile objects
+        #  Requires
+        #    The 'library' directory must already exist
+        #    This method is only run once per 'library'
+        #  Guarantees
+        #    12 files will be added to the library in various directories
+        #    A list of 12 MockMediaFile objects is returned
+
+        source_string = 'source' if mock_library.source else 'backup'
+
+        return [
+            self.make_media('{}-1.mkv'.format(source_string), '{}-1'.format(source_string), mock_library),
+            self.make_media('{}-2.mkv'.format(source_string), '{}-2'.format(source_string), mock_library),
+            self.make_media('{0}-dir-1/{0}-3.mkv'.format(source_string), '{}-3'.format(source_string), mock_library),
+            self.make_media('{0}-dir-1/{0}-4.mkv'.format(source_string), '{}-4'.format(source_string), mock_library),
+            self.make_media('{0}-dir-2/{0}-5.mkv'.format(source_string), '{}-5'.format(source_string), mock_library),
+            self.make_media('{0}-dir-2/{0}-6.mkv'.format(source_string), '{}-6'.format(source_string), mock_library),
+            self.make_media('{0}-dir-2/dir-2.1/{0}-7.mkv'.format(source_string), '{}-7'.format(source_string), mock_library),
+            self.make_media('{0}-dir-2/dir-2.1/{0}-8.mkv'.format(source_string), '{}-8'.format(source_string), mock_library),
+            self.make_media('{0}-3/dir-3.1/dir-3.1.1/{0}-9.mkv'.format(source_string), '{}-9'.format(source_string), mock_library),
+            self.make_media('{0}-3/dir-3.1/dir-3.1.1/{0}-10.mkv'.format(source_string), '{}-10'.format(source_string), mock_library),
+            self.make_media('{0}-3/dir-3.1/dir-3.1.2/{0}-11.mkv'.format(source_string), '{}-11'.format(source_string), mock_library),
+            self.make_media('{0}-3/dir-3.1/dir-3.1.2/{0}-12.mkv'.format(source_string), '{}-12'.format(source_string), mock_library)
+        ]
+
+    def populate_libraries_with_identical_media(self, source_mock_library: MockLibrary, backup_mock_library: MockLibrary):
+        #  Description
+        #    Add 6 files to the target library, in both mirrors
+        #    Return a tuple; two lists of MockMediaFile objects
+        #  Requires
+        #    The 'library' directories must already exist
+        #    This method is only run once per 'library'
+        #  Guarantees
+        #    6 files will be added to each library in various directories
+        #    A tuple is returned:
+        #     - The first item is a list of MockMediaFile objects added to the souce library
+        #     - The second item is a list of MockMediaFile objects added to the backup library
+
+        source_media = [
+            self.make_media('mock-1.mkv', 'mock-1', source_mock_library),
+            self.make_media('dir-1/mock-2.mkv', 'mock-2', source_mock_library),
+            self.make_media('dir-2/mock-3.mkv', 'mock-3', source_mock_library),
+            self.make_media('dir-2/dir-2.1/mock-4.mkv', 'mock-4', source_mock_library),
+            self.make_media('dir-3/dir-3.1/dir-3.1.1/mock-5.mkv', 'mock-5', source_mock_library),
+            self.make_media('dir-3/dir-3.1/dir-3.1.2/mock-6.mkv', 'mock-6', source_mock_library)
+        ]
+
+        backup_media = [
+            self.make_media('mock-1.mkv', 'mock-1', backup_mock_library),
+            self.make_media('dir-1/mock-2.mkv', 'mock-2', backup_mock_library),
+            self.make_media('dir-2/mock-3.mkv', 'mock-3', backup_mock_library),
+            self.make_media('dir-2/dir-2.1/mock-4.mkv', 'mock-4', backup_mock_library),
+            self.make_media('dir-3/dir-3.1/dir-3.1.1/mock-5.mkv', 'mock-5', backup_mock_library),
+            self.make_media('dir-3/dir-3.1/dir-3.1.2/mock-6.mkv', 'mock-6', backup_mock_library)
+        ]
+
+        return source_media, backup_media

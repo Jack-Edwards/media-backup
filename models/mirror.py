@@ -3,7 +3,7 @@ import os
 from .library import Library
 
 class BaseMirror(object):
-    def __init__(self, path, source):
+    def __init__(self, path: str, source: bool):
         self.path = path
         self.source = source
         self.libraries = dict()  # {'library_name': LibraryObject}
@@ -22,7 +22,11 @@ class BaseMirror(object):
                 os.makedirs(library_path)
         
         #  Add the library object to 'self.libraries' as {'library_name': LibraryObject}
-        self.libraries[library] = Library(library, self.source, library_path)
+        self.libraries[library] = Library(
+            name=library,
+            path=library_path,
+            source=self.source
+        )
 
 
 class SourceMirror(BaseMirror):

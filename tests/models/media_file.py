@@ -1,8 +1,6 @@
 import unittest
-import tempfile
 import datetime
 import os
-import shutil
 
 from ..tools import sandbox
 from ...models import media_file
@@ -16,12 +14,12 @@ class MediaFileTests(unittest.TestCase):
         self.sandbox.create()
 
         #  Create mock video file(s) in the source 'Videos' library
-        self.source_mock_file = self.sandbox.make_media('mock.mkv', 'source bits', 'Videos', True)
-        self.source_mock_file_in_dir = self.sandbox.make_media('dir/mock.mkv', 'source bits', 'Videos', True)
+        self.source_mock_file = self.sandbox.make_media('mock.mkv', 'source bits', self.sandbox.source_videos_library)
+        self.source_mock_file_in_dir = self.sandbox.make_media('dir/mock.mkv', 'source bits', self.sandbox.source_videos_library)
 
         #  Create mock video file(s) in the backup 'Videos' library
-        self.backup_mock_file = self.sandbox.make_media('mock.mkv', 'backup bits', 'Videos', False)
-        self.backup_mock_file_in_dir = self.sandbox.make_media('dir/mock.mkv', 'backup bits', 'Videos', False)
+        self.backup_mock_file = self.sandbox.make_media('mock.mkv', 'backup bits', self.sandbox.backup_videos_library)
+        self.backup_mock_file_in_dir = self.sandbox.make_media('dir/mock.mkv', 'backup bits', self.sandbox.backup_videos_library)
 
     def tearDown(self):
         self.sandbox.destroy()
@@ -97,19 +95,19 @@ class MediaFileTests(unittest.TestCase):
 class MediaFileTestMethods(unittest.TestCase):
     #  Re-usable methods
     
-    def init_media_file(self, mock_file):
+    def init_media_file(self, mock_file: sandbox.MockMediaFile):
         #  Make a MediaFile object
         media_file_object = media_file.MediaFile(
             mock_file.path,
             mock_file.name,
-            False
+            mock_file.source
         )
 
         #  Assert default properties are as expected
         self.assertEqual(media_file_object.path, mock_file.path)
         self.assertEqual(media_file_object.path_in_library, mock_file.name)
         self.assertEqual(media_file_object.ext, '.mkv')
-        self.assertFalse(media_file_object.source)
+        self.assertEqual(media_file_object.source, mock_file.source)
 
         mock_file_dirname = os.path.dirname(mock_file.path)
         mock_file_cache_file = os.path.join(
@@ -120,23 +118,23 @@ class MediaFileTestMethods(unittest.TestCase):
 
         self.assertEqual(media_file_object.cache_file, mock_file_cache_file)
 
-    def real_checksum(self, mock_file, checksum):
+    def real_checksum(self, mock_file: sandbox.MockMediaFile, checksum: str):
         #  Make a 'backup' MediaFile object
-        backup_media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, False)
+        backup_media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, mock_file.source)
 
         #  Assert the checksum is as expected
         self.assertEqual(backup_media_file_object.real_hash, checksum)
 
-    def cached_checksum(self, mock_file, checksum):
+    def cached_checksum(self, mock_file: sandbox.MockMediaFile, checksum: str):
         #  Make a MediaFile object
-        media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, False)
+        media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, mock_file.source)
 
         #  Assert the checksum is as expected
         self.assertEqual(media_file_object.cached_hash, checksum)
 
-    def cached_checksum_date(self, mock_file):
+    def cached_checksum_date(self, mock_file: sandbox.MockMediaFile):
         #  Make a MediaFile object
-        media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, True)
+        media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, mock_file.source)
 
         #  Assert the generated cache date is today
         today = str(datetime.date.today())

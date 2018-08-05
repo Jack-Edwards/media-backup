@@ -4,10 +4,10 @@ import shutil
 from .media_file import MediaFile
 
 class Library(object):
-    def __init__(self, name, source, path):
+    def __init__(self, name: str, path: str, source: bool):
         self.name = name
-        self.source = source
         self.path = path
+        self.source = source
         self.media = dict()  # {'path_in_library': MediaFileObject}
 
         self.allowed_media_extensions = [
