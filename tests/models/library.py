@@ -68,116 +68,33 @@ class LibraryTests(unittest.TestCase):
             self.sandbox.source_videos_library
         )
 
-    def test_delete_media(self):
-        return
-        #  Make 'source' and 'backup' Library objects
-        source_library_object = library.Library('videos', True, self.source_video_library)
-        backup_library_object = library.Library('videos', False, self.backup_video_library)
+    def test_delete_media_from_source_video_library(self):
+        LibraryTestMethods().delete_media(self.sandbox.source_videos_library)
+    
+    def test_delete_media_from_backup_video_library(self):
+        LibraryTestMethods().delete_media(self.sandbox.backup_videos_library)
 
-        #  Load the 'source' and 'backup' libraries
-        source_library_object.load_all_media()
-        backup_library_object.load_all_media()
+    def test_ignore_txt_in_source_video_library(self):
+        file_path = self.sandbox.make_media(
+            'ignore_me.txt',
+            'foo',
+            self.sandbox.source_videos_library
+        )
+        LibraryTestMethods().ignored_file_extensions(
+            self.sandbox.source_videos_library,
+            file_path
+        )
 
-        #  Assert the libraries actually contain media files
-        self.assertEqual(len(source_library_object.media), len(self.source_video_list))
-        self.assertEqual(len(backup_library_object.media), len(self.source_video_list))
-
-        #  Set a reference to the first media file in each library
-        source_file_name = next(iter(source_library_object.media))
-        backup_file_name = next(iter(backup_library_object.media))
-        source_file = source_library_object.media[source_file_name]
-        backup_file = backup_library_object.media[backup_file_name]
-
-        #  Generate a cache file for one file in each library
-        source_file.save_hash_to_file(False)
-        backup_file.save_hash_to_file(False)
-
-        #  Assert the cache files exist
-        self.assertTrue(os.path.exists(source_file.cache_file))
-        self.assertTrue(os.path.exists(backup_file.cache_file))
-
-        #  Delete both media
-        source_library_object.delete_media(source_file_name)
-        backup_library_object.delete_media(backup_file_name)
-
-        #  Assert both media and both cache files no longer exist on the disc
-        self.assertFalse(os.path.exists(source_file.path))
-        self.assertFalse(os.path.exists(backup_file.path))
-        self.assertFalse(os.path.exists(source_file.cache_file))
-        self.assertFalse(os.path.exists(backup_file.cache_file))
-
-        #  Assert neither media exist in their libraries any more
-        self.assertFalse(source_file_name in source_library_object.media.keys())
-        self.assertFalse(backup_file_name in backup_library_object.media.keys())
-        self.assertEqual(len(source_library_object.media), 10)
-        self.assertEqual(len(backup_library_object.media), 10)
-        
-    def test_directory_media(self):
-        return
-        #  Implementation notes
-        #    The reason for asserting 'delete_media()' works here as well
-        #    is to help determine where the defect exists, if a unit test fails.
-        #
-        #    If 'test_directory_media()' fails when deleting, but 'test_delete_media()' passes
-        #    it is obvious the defect only exists when deleting /directory/ media.
-        #
-        #    This is the same logic for having a 'test_load_all_media()' test plus another
-        #    'test_directory_media()' test, that basically does the same thing
-        #    but with media in directories
-
-        #  Make and load a 'source' library object
-        source_library_object = library.Library('videos', True, self.source_video_library)
-        source_library_object.load_all_media()
-
-        #  Assert the number of media in the library is as expected
-        self.assertEqual(len(source_library_object.media), len(self.source_video_list))
-
-        #  Add a new file to the disc; the file is in a sub-directory
-        file_directory = os.path.join(self.source_video_library, 'sub-dir')
-        file_path = os.path.join(file_directory, 'directory-test.mkv')
-        media_file_name = 'sub-dir/directory-test.mkv'
-        os.mkdir(file_directory)
-        self.source_video_list.append(file_path)
-        with open(file_path, 'w') as video_file:
-            video_file.write('source bits')
-
-        #  Load the library again
-        source_library_object.load_all_media()
-
-        #  Assert the new media is added to the library
-        self.assertTrue(media_file_name in source_library_object.media.keys())
-        self.assertEqual(source_library_object.media[media_file_name].path_in_library, media_file_name)
-        self.assertEqual(source_library_object.media[media_file_name].path, file_path)
-        self.assertEqual(len(source_library_object.media), len(self.source_video_list))
-
-        #  Create the cache file for the media, then call 'delete_media()'
-        directory_media_file = source_library_object.media[media_file_name]
-        directory_media_file.save_hash_to_file(False)
-        source_library_object.delete_media(media_file_name)
-        self.source_video_list.remove(file_path)
-
-        #  Assert the media was deleted as expected
-        self.assertFalse(os.path.exists(directory_media_file.path))
-        self.assertFalse(os.path.exists(directory_media_file.cache_file))
-        self.assertFalse(media_file_name in source_library_object.media.keys())
-        self.assertEqual(len(source_library_object.media), len(self.source_video_list))
-
-        #  todo - test 'copy_media()'
-
-    def test_ignored_file_extensions(self):
-        return
-        #  Make a 'source' library object
-        source_library_object = library.Library('videos', True, self.source_video_library)
-        
-        #  Add a file to the disc that is not in the library's list of allowed extensions
-        file_path = os.path.join(self.source_video_library, 'bad-extension.txt')
-        with open(file_path, 'w') as new_file:
-            new_file.write('source bits')
-
-        #  Load the library and assert the new file is not loaded
-        source_library_object.load_all_media()
-        self.assertFalse('bad-extension.txt' in source_library_object.media.keys())
-        self.assertEqual(len(source_library_object.media), len(self.source_video_list))
+    def test_ignore_txt_in_backup_video_library(self):
+        file_path = self.sandbox.make_media(
+            'ignore_me.txt',
+            'foo',
+            self.sandbox.backup_videos_library
+        )
+        LibraryTestMethods().ignored_file_extensions(
+            self.sandbox.backup_videos_library,
+            file_path
+        )
 
     def test_yield_empty_directories(self):
         #  todo
@@ -307,6 +224,7 @@ class LibraryTestMethods(unittest.TestCase):
         for media_name in other_library_object.media:
             if media_name in target_library_object.media:
                 copy_count += 1
+                target_file_last_modified = os.path.getmtime(target_library_object.media[media_name].path)
                 with self.assertRaises(FileExistsError):
                     target_library_object.copy_media(
                         other_library_object.media[media_name].path,
@@ -315,6 +233,53 @@ class LibraryTestMethods(unittest.TestCase):
                     )
                 self.assertTrue(media_name in target_library_object.media)
                 self.assertTrue(os.path.exists(target_library_object.media[media_name].path))
-                #  todo - verify the file's last write datetime doesn't change (?)
-                
+                self.assertEqual(
+                    target_file_last_modified,
+                    os.path.getmtime(target_library_object.media[media_name].path)
+                )
+
         self.assertEqual(len(target_library_object.media), original_target_media_count)
+
+    def delete_media(self, mock_library):
+        #  Make a Library object
+        library_object = library.Library(mock_library.name, mock_library.path, mock_library.source)
+
+        #  Load the library; assert media were actually found
+        library_object.load_all_media()
+        self.assertEqual(len(library_object.media), 18)
+
+        #  Generate a cache file for each media in the library
+        media_items = []
+        for media_name in library_object.media:
+            media_items.append((
+                media_name,
+                library_object.media[media_name].path
+            ))
+            library_object.media[media_name].cached_hash
+            self.assertTrue(os.path.exists(library_object.media[media_name].cache_file))
+
+        #  Delete each media and perform assertions
+        for media_name, media_path in media_items:
+            media_cache_path = library_object.media[media_name].cache_file
+            library_object.delete_media(media_name)
+            self.assertFalse(os.path.exists(media_path))
+            self.assertFalse(os.path.exists(media_cache_path))
+            self.assertFalse(media_name in library_object.media)
+
+        self.assertEqual(len(library_object.media), 0)
+
+    def ignored_file_extensions(self, mock_library, file_to_ignore):
+        #  Make a Library object
+        library_object = library.Library(mock_library.name, mock_library.path, mock_library.source)
+
+        #  For sanity purposes, make sure the 'file_to_ignore' actually exists under the library
+        self.assertTrue(os.path.exists(file_to_ignore.path))
+        self.assertIn(library_object.path, file_to_ignore.path)
+
+        #  Load the library; assert the 'file_to_ignore' was not loaded
+        library_object.load_all_media()
+        self.assertEqual(len(library_object.media), 18)
+        self.assertNotIn(
+            file_to_ignore.name,
+            library_object.media
+        )

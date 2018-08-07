@@ -10,10 +10,10 @@ class MediaFile(object):
         self.path = path
         self.path_in_library = path_in_library
         self.cache_file = os.path.join(
-                os.path.dirname(self.path),
-                '.cache',
-                '{}.txt'.format(self.name)
-            )
+            os.path.dirname(self.path),
+            '.cache',
+            '{}.txt'.format(self.name)
+        )
 
         self._real_hash = None
         self._cached_hash = None
