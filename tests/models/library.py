@@ -176,7 +176,7 @@ class LibraryTestMethods(unittest.TestCase):
                 target_library_object.copy_media(
                     other_library_object.media[media_name].path,
                     other_library_object.media[media_name].path_in_library,
-                    other_library_object.media[media_name].real_hash
+                    other_library_object.media[media_name].real_checksum
                 )
 
                 #  Assertions
@@ -187,16 +187,16 @@ class LibraryTestMethods(unittest.TestCase):
                 )
                 self.assertTrue(os.path.exists(target_library_object.media[media_name].path))
                 self.assertEqual(
-                    target_library_object.media[media_name].real_hash,
-                    other_library_object.media[media_name].real_hash
+                    target_library_object.media[media_name].real_checksum,
+                    other_library_object.media[media_name].real_checksum
                 )
                 self.assertNotEqual(
                     target_library_object.media[media_name].cache_file,
                     other_library_object.media[media_name].cache_file
                 )
                 self.assertEqual(
-                    target_library_object.media[media_name].cached_hash,
-                    other_library_object.media[media_name].cached_hash
+                    target_library_object.media[media_name].cached_checksum,
+                    other_library_object.media[media_name].cached_checksum
                 )
                 self.assertEqual(
                     target_library_object.media[media_name].cached_date,
@@ -229,7 +229,7 @@ class LibraryTestMethods(unittest.TestCase):
                     target_library_object.copy_media(
                         other_library_object.media[media_name].path,
                         other_library_object.media[media_name].path_in_library,
-                        other_library_object.media[media_name].real_hash
+                        other_library_object.media[media_name].real_checksum
                     )
                 self.assertTrue(media_name in target_library_object.media)
                 self.assertTrue(os.path.exists(target_library_object.media[media_name].path))
@@ -255,7 +255,7 @@ class LibraryTestMethods(unittest.TestCase):
                 media_name,
                 library_object.media[media_name].path
             ))
-            library_object.media[media_name].cached_hash
+            library_object.media[media_name].cached_checksum
             self.assertTrue(os.path.exists(library_object.media[media_name].cache_file))
 
         #  Delete each media and perform assertions

@@ -154,10 +154,10 @@ class MirrorManager(object):
             raise BaseException('Mirrors not loaded')
 
     #  This method gets tricky.  Hurdles:
-    #  - Each file has a real_hash and cache_hash.  Which values to compare?
-    #  - What if there is a local hash mismatch?
+    #  - Each file has a real_checksum and cache_checksum.  Which values to compare?
+    #  - What if there is a local checksum mismatch?
     #  Answer:
-    #  - Compare the hashed values; calculating the real hash for every file is going to take too long
+    #  - Compare the checksum values; calculating the real checksum for every file is going to take too long
     #  - Trust that user/script knows to resolve local checksum errors before tackling mirror checksum errors
     def yield_media_with_mirror_checksum_error(self):
         if self.mirrors_loaded:
@@ -167,7 +167,7 @@ class MirrorManager(object):
 
                     #  Verify the media also exists on the backup
                     if path_in_library in self.backup_mirror.libraries[library].media:
-                        if source_media.cached_hash != self.backup_mirror.libraries[library].media[path_in_library].cached_hash:
+                        if source_media.cached_checksum != self.backup_mirror.libraries[library].media[path_in_library].cached_checksum:
                             yield 'source', library, path_in_library
                 #  Do not repeat for backup mirror
                 #  By definition, it's' impossible for a mirror checksum error to exist /just/ on the backup
@@ -193,11 +193,11 @@ class MirrorManager(object):
             for library in self.libraries:
                 for path_in_library in self.source_mirror.libraries[library].media:
                     source_media = self.source_mirror.libraries[library].media[path_in_library]
-                    if source_media.real_hash != source_media.cached_hash:
+                    if source_media.real_checksum != source_media.cached_checksum:
                         yield 'source', library, path_in_library
                 for path_in_library in self.backup_mirror.libraries[library].media:
                     backup_media = self.backup_mirror.libraries[library].media[path_in_library]
-                    if backup_media.real_hash != backup_media.cached_hash:
+                    if backup_media.real_checksum != backup_media.cached_checksum:
                         yield 'backup', library, path_in_library
         else:
             raise BaseException('Mirrors not loaded')
@@ -248,8 +248,8 @@ class MirrorManager(object):
                     media = self.backup_mirror.libraries[library].media[path_in_library]
                 else:
                     raise ValueError('Unexpected mirror value')
-                if media.real_hash == media.cached_hash:
-                    media.save_hash_to_file(overwrite=True)
+                if media.real_checksum == media.cached_checksum:
+                    media.save_checksum_to_file(overwrite=True)
         else:
             raise BaseException('Mirrors not loaded')
 
@@ -284,8 +284,8 @@ class MirrorManager(object):
         if self.mirrors_loaded:
             for library, path_in_library in self.yield_source_media_not_backed_up():
                 media = self.source_mirror.libraries[library].media[path_in_library]
-                if media.real_hash == media.cached_hash:
-                    self.backup_mirror.libraries[library].copy_media(media.path, media.path_in_library, media.real_hash)
+                if media.real_checksum == media.cached_checksum:
+                    self.backup_mirror.libraries[library].copy_media(media.path, media.path_in_library, media.real_checksum)
         else:
             raise BaseException('Mirrors not loaded')
 
@@ -323,7 +323,7 @@ class MirrorManager(object):
                         break
                     if result == '2':
                         backup_media = self.backup_mirror.libraries[library].media[path_in_library]
-                        self.source_mirror.libraries[library].copy_media(backup_media.path, path_in_library, backup_media.real_hash)
+                        self.source_mirror.libraries[library].copy_media(backup_media.path, path_in_library, backup_media.real_checksum)
                         break
                     elif result == '3':
                         break
@@ -365,15 +365,15 @@ class MirrorManager(object):
 
                     if result == '1':
                         #  The file is valid.  Update the cache file with the new checksum
-                        this_mirror.libraries[library].media[path_in_library].save_hash_to_file(overwrite=True)
-                        this_mirror.libraries[library].media[path_in_library].load_hash_from_file()
+                        this_mirror.libraries[library].media[path_in_library].save_checksum_to_file(overwrite=True)
+                        this_mirror.libraries[library].media[path_in_library].load_checksum_from_file()
                         break
                     elif result == '2':
                         #  The file is not valid.  Delete the file then copy from other mirror
                         if mirror_media:
                             #  The file exists on the other mirror.  Proceed
                             this_mirror.libraries[library].delete_media(path_in_library)
-                            this_mirror.libraries[library].copy_media(mirror_media.path, path_in_library, mirror_media.real_hash)
+                            this_mirror.libraries[library].copy_media(mirror_media.path, path_in_library, mirror_media.real_checksum)
                             break
                         else:
                             #  The file does not exist on the other mirror
@@ -410,7 +410,7 @@ class MirrorManager(object):
                         good_media = self.source_mirror.libraries[library].media[path_in_library]
                         if os.path.exists(good_media.path):
                             self.backup_mirror.libraries[library].delete_media(path_in_library)
-                            self.backup_mirror.libraries[library].copy_media(good_media.path, path_in_library, good_media.real_hash)
+                            self.backup_mirror.libraries[library].copy_media(good_media.path, path_in_library, good_media.real_checksum)
                         else:
                             print('Error: Files does not exists in Backup')
                             # Don't break
@@ -420,7 +420,7 @@ class MirrorManager(object):
                         good_media = self.backup_mirror.libraries[library].media[path_in_library]
                         if os.path.exists(good_media.path):
                             self.source_mirror.libraries[library].delete_media(path_in_library)
-                            self.source_mirror.libraries[library].copy_media(good_media.path, path_in_library, good_media.real_hash)
+                            self.source_mirror.libraries[library].copy_media(good_media.path, path_in_library, good_media.real_checksum)
                         else:
                             print('Error: File does not exist in Source')
                             # Don't break

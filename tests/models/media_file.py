@@ -123,14 +123,14 @@ class MediaFileTestMethods(unittest.TestCase):
         backup_media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, mock_file.source)
 
         #  Assert the checksum is as expected
-        self.assertEqual(backup_media_file_object.real_hash, checksum)
+        self.assertEqual(backup_media_file_object.real_checksum, checksum)
 
     def cached_checksum(self, mock_file: sandbox.MockMediaFile, checksum: str):
         #  Make a MediaFile object
         media_file_object = media_file.MediaFile(mock_file.path, mock_file.name, mock_file.source)
 
         #  Assert the checksum is as expected
-        self.assertEqual(media_file_object.cached_hash, checksum)
+        self.assertEqual(media_file_object.cached_checksum, checksum)
 
     def cached_checksum_date(self, mock_file: sandbox.MockMediaFile):
         #  Make a MediaFile object
@@ -150,7 +150,7 @@ class MediaFileTestMethods(unittest.TestCase):
             cache_file.write('{}|{}'.format('2018-04-01', cached_checksum))
 
         #  Assert the modified cache date is returned
-        media_file_object.load_hash_from_file()
+        media_file_object.load_checksum_from_cache()
         self.assertEqual(media_file_object.cached_date, '2018-04-01')
 
         #  Assert the cache is flagged as 'stale'
