@@ -32,6 +32,11 @@ class MediaFile(object):
         self._real_checksum = value
 
     @property
+    def real_checksum_has_been_set(self):
+        if self._real_checksum is not None:
+            return True
+
+    @property
     def cached_checksum(self):
         if self._cached_checksum is None:
             self.load_checksum_from_cache()

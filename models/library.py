@@ -218,22 +218,37 @@ class Library(object):
     def refresh_stale_cache_files(self):
         #  Description
         #    Set today's date in old cache files
-        #    Return a list of media_files with real and
-        #    cached checksum discrepancies
         #  Requires
         #    'self.path' must exist on the filesystem
         #    'self.load_all_media()' has been called and 'self.media' is populated
         #  Guarantees
         #    Old cache files will have today's date set, if the media_file's
         #    real_checksum matches it's cached_checksum
-        #    If the media_file's checksums do not match, it will be returned
-        #    in a list
 
-        media_files_with_checksum_discrepancies = list()
         for media_file in self.yield_media_with_stale_cache_file():
             if media_file.real_and_cached_checksums_match:
                 media_file.refresh_checksum()
-            else:
-                media_files_with_checksum_discrepancies.append(media_file)
 
-        return media_files_with_checksum_discrepancies
+    def yield_media_with_local_checksum_discrepancy(self):
+        #  Description
+        #    A generator to return a MediaFile object for media files
+        #    with different 'real_checksum' and 'cached_checksum' values
+        #  Requires
+        #    'self.path' must exist on the filesystem
+        #    'self.load_all_media()' has been called and 'self.media' is populated
+        #    'self.refresh_stale_cache_files()' has already been run
+        #  Guarantees
+        #    A MediaFile object is returned for each media file with different
+        #    'real_checksum' and 'cached_checksum' values, one at a time
+        #
+        #    MediaFile objects which have not had a 'real_checksum' value set are not checked
+        #    and will not be returned
+        #  Implementation Notes
+        #    This will only return MediaFile objects which have a 'real_checksum' value set.
+        #    This improves performance, and is the whole point of maintaining and refreshing
+        #    the cache files; 'real_checksum' is calculated and set when refreshing stale cache files
+
+        for media in self.media.values():
+            if media.real_checksum_has_been_set:
+                if not media.real_and_cached_checksums_match():
+                    yield media

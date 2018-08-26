@@ -28,6 +28,47 @@ class BaseMirror(object):
             source=self.source
         )
 
+        media_files_with_checksum_discrepancies = list()
+        for library in self.libraries:
+            media_files_with_checksum_discrepancies += library.refresh_stale_cache_files()
+        return media_files_with_checksum_discrepancies
+
+    @property
+    def media_with_stale_cache_file(self):
+        media_with_stale_cache_file = list()
+        for library in self.libraries.values():
+            for media in library.yield_media_with_stale_cache_file():
+                media_with_stale_cache_file.append(media)
+        return media_with_stale_cache_file
+
+    @property
+    def empty_directories(self):
+        empty_directories = list()
+        for library in self.libraries.values():
+            for directory in library.yield_empty_directories():
+                empty_directories.append(directory)
+        return empty_directories
+
+    @property
+    def orphan_cache_files(self):
+        orphan_cache_files = list()
+        for library in self.libraries.values():
+            for cache_file in library.yield_orphan_cache_files():
+                orphan_cache_files.append(cache_file)
+        return orphan_cache_files
+
+    @property
+    def media_with_local_checksum_discrepancy(self):
+        media_with_local_checksum_discrepancy = list()
+        for library in self.libraries.values():
+            for media in library.yield_media_with_local_checksum_discrepancy():
+                media_with_local_checksum_discrepancy.append(media)
+        return media_with_local_checksum_discrepancy
+
+    def refresh_stale_cache_files(self):
+        for library in self.libraries.values():
+            library.refresh_stale_cache_files()
+
 
 class SourceMirror(BaseMirror):
     def __init__(self, path):
@@ -45,80 +86,16 @@ class MirrorManager(object):
         self.mirrors_loaded = False
 
     @property
-    def total_problem_count(self):
-        return (
-            self.source_media_not_backed_up_count +
-            self.orphan_backup_media_count +
-            self.media_with_stale_cache_count +
-            self.media_with_local_checksum_error_count +
-            self.orphan_cache_file_count +
-            self.empty_directory_count +
-            self.media_with_mirror_checksum_error_count
-        )
-
-    @property
-    def automatic_problem_count(self):
-        return (
-            self.source_media_not_backed_up_count +
-            self.media_with_stale_cache_count +
-            self.orphan_cache_file_count +
-            self.empty_directory_count
-        )
-
-    @property
-    def manual_problem_count(self):
-        return (
-            self.orphan_backup_media_count +
-            self.media_with_local_checksum_error_count +
-            self.media_with_mirror_checksum_error_count
-        )
-
-    @property
-    def orphan_cache_file_count(self):
-        count = 0
-        for _ in self.yield_orphan_cache_files():
-            count += 1
-        return count
-
-    @property
-    def empty_directory_count(self):
-        count = 0
-        for _ in self.yield_empty_directories():
-            count += 1
-        return count
-
-    @property
-    def source_media_not_backed_up_count(self):
+    def source_media_not_backup_up_count(self):
         count = 0
         for _ in self.yield_source_media_not_backed_up():
             count += 1
         return count
 
     @property
-    def orphan_backup_media_count(self):
+    def mirror_checksum_discrepancy_count(self):
         count = 0
-        for _ in self.yield_orphan_backup_media():
-            count += 1
-        return count
-
-    @property
-    def media_with_stale_cache_count(self):
-        count = 0
-        for _ in self.yield_media_with_stale_cache():
-            count += 1
-        return count
-
-    @property
-    def media_with_local_checksum_error_count(self):
-        count = 0
-        for _ in self.yield_media_with_local_checksum_error():
-            count += 1
-        return count
-
-    @property
-    def media_with_mirror_checksum_error_count(self):
-        count = 0
-        for _ in self.yield_media_with_mirror_checksum_error():
+        for _ in self.yield_media_with_mirror_checksum_discrepancy():
             count += 1
         return count
 
@@ -144,143 +121,8 @@ class MirrorManager(object):
         else:
             raise BaseException('Mirrors not loaded')
 
-    def yield_orphan_backup_media(self):
-        if self.mirrors_loaded:
-            for library in self.libraries:
-                for path_in_library in self.backup_mirror.libraries[library].media:
-                    if path_in_library not in self.source_mirror.libraries[library].media:
-                        yield library, path_in_library
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    #  This method gets tricky.  Hurdles:
-    #  - Each file has a real_checksum and cache_checksum.  Which values to compare?
-    #  - What if there is a local checksum mismatch?
-    #  Answer:
-    #  - Compare the checksum values; calculating the real checksum for every file is going to take too long
-    #  - Trust that user/script knows to resolve local checksum errors before tackling mirror checksum errors
-    def yield_media_with_mirror_checksum_error(self):
-        if self.mirrors_loaded:
-            for library in self.libraries:
-                for path_in_library in self.source_mirror.libraries[library].media:
-                    source_media = self.source_mirror.libraries[library].media[path_in_library]
-
-                    #  Verify the media also exists on the backup
-                    if path_in_library in self.backup_mirror.libraries[library].media:
-                        if source_media.cached_checksum != self.backup_mirror.libraries[library].media[path_in_library].cached_checksum:
-                            yield 'source', library, path_in_library
-                #  Do not repeat for backup mirror
-                #  By definition, it's' impossible for a mirror checksum error to exist /just/ on the backup
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    def yield_media_with_stale_cache(self):
-        if self.mirrors_loaded:
-            for library in self.libraries:
-                for path_in_library in self.source_mirror.libraries[library].media:
-                    source_media = self.source_mirror.libraries[library].media[path_in_library]
-                    if source_media.cache_is_stale:
-                        yield 'source', library, path_in_library
-                for path_in_library in self.backup_mirror.libraries[library].media:
-                    backup_media = self.backup_mirror.libraries[library].media[path_in_library]
-                    if backup_media.cache_is_stale:
-                        yield 'backup', library, path_in_library
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    def yield_media_with_local_checksum_error(self):
-        if self.mirrors_loaded:
-            for library in self.libraries:
-                for path_in_library in self.source_mirror.libraries[library].media:
-                    source_media = self.source_mirror.libraries[library].media[path_in_library]
-                    if source_media.real_checksum != source_media.cached_checksum:
-                        yield 'source', library, path_in_library
-                for path_in_library in self.backup_mirror.libraries[library].media:
-                    backup_media = self.backup_mirror.libraries[library].media[path_in_library]
-                    if backup_media.real_checksum != backup_media.cached_checksum:
-                        yield 'backup', library, path_in_library
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    def yield_empty_directories(self):
-        if self.mirrors_loaded:
-            mirrors = [
-                self.source_mirror,
-                self.backup_mirror
-            ]
-            for mirror in mirrors:
-                for library in self.libraries:
-                    path = mirror.libraries[library].path
-                    for dirpath, dirnames, filenames in os.walk(path):
-                        if len (dirnames) == 0 and len(filenames) == 0:
-                            yield dirpath
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    def yield_orphan_cache_files(self):
-        if self.mirrors_loaded:
-            mirrors = [
-                self.source_mirror,
-                self.backup_mirror
-            ]
-            for mirror in mirrors:
-                for library in self.libraries:
-                    path = mirror.libraries[library].path
-                    for dirpath, _, filenames in os.walk(path):
-                        if '.cache' in dirpath:
-                            if len(filenames) > 0:
-                                for file in filenames:
-                                    parent_dir = os.path.dirname(dirpath)
-                                    media_file_name = os.path.splitext(file)[0]
-                                    media_file = os.path.join(parent_dir, media_file_name)
-                                    if not os.path.exists(media_file):
-                                        yield os.path.join(dirpath, file)
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    #  Automatic processing
-    def process_stale_cache_files(self):
-        if self.mirrors_loaded:
-            for mirror, library, path_in_library in self.yield_media_with_stale_cache():
-                if mirror.lower() == 'source':
-                    media = self.source_mirror.libraries[library].media[path_in_library]
-                elif mirror.lower() == 'backup':
-                    media = self.backup_mirror.libraries[library].media[path_in_library]
-                else:
-                    raise ValueError('Unexpected mirror value')
-                if media.real_checksum == media.cached_checksum:
-                    media.save_checksum_to_file(overwrite=True)
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    #  Automatic processing
-    def process_empty_directories(self):
-        if self.mirrors_loaded:
-            directories = list()
-            for directory in self.yield_empty_directories():
-                directories.append(directory)
-
-            for directory in directories:
-                print(directory)
-                os.rmdir(directory)
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    #  Automatic processing
-    def process_orphan_cache_files(self):
-        if self.mirrors_loaded:
-            files = list()
-            for file in self.yield_orphan_cache_files():
-                files.append(file)
-
-            for file in files:
-                os.remove(file)
-        else:
-            raise BaseException('Mirrors not loaded')
-
-    #  Automatic processing
-    #  This is safe to do before fixing checksum errors
-    def process_new_source_media(self):
+    #  This is safe to do before fixing checksum discrepancies
+    def backup_new_source_media(self):
         if self.mirrors_loaded:
             for library, path_in_library in self.yield_source_media_not_backed_up():
                 media = self.source_mirror.libraries[library].media[path_in_library]
@@ -289,112 +131,166 @@ class MirrorManager(object):
         else:
             raise BaseException('Mirrors not loaded')
 
-    #  This could be automatic, but I want to make it require user input
-    def process_orphan_backup_media(self):
-        if self.mirrors_loaded:
-            #  Unfortunately, deleting an orphan media breaks the generator,
-            #  so need to create a local collection and iterate over that instead
-            orphan_media = list()
-            for library, path_in_library in self.yield_orphan_backup_media():
-                orphan_media.append({
-                    'library': library,
-                    'path_in_library': path_in_library
-                })
-
-            for orphan in orphan_media:
-                library = orphan['library']
-                path_in_library = orphan['path_in_library']
-                while True:
-                    print('> Orphaned backup file: {}/{}'.format(
-                        library,
-                        path_in_library
-                    ))
-
-                    input_string = (
-                        '1. Delete the file.' +
-                        '\n2. Restore the file'
-                        '\n3. Skip for now.' +
-                        '\nChoose an option: '
-                    )
-                    result = input(input_string)
-
-                    if result == '1':
-                        self.backup_mirror.libraries[library].delete_media(path_in_library)
-                        break
-                    if result == '2':
-                        backup_media = self.backup_mirror.libraries[library].media[path_in_library]
-                        self.source_mirror.libraries[library].copy_media(backup_media.path, path_in_library, backup_media.real_checksum)
-                        break
-                    elif result == '3':
-                        break
-        else:
-            raise BaseException('Mirrors not loaded')
-
     #  This requires user input
-    def process_local_checksum_errors(self):
+    def process_source_local_checksum_discrepancies(self):
         if self.mirrors_loaded:
-            for mirror, library, path_in_library in self.yield_media_with_local_checksum_error():
-                while True:
-                    print('> Local checksum error: [{}]/{}/{}'.format(
-                        mirror,
-                        library,
-                        path_in_library
-                    ))
+            for library_name in self.source_mirror.libraries:
+                source_media_files = list(media for media in self.source_mirror.libraries[library_name].yield_media_with_local_checksum_discrepancy())
+                for source_media_file in source_media_files:
+                    while True:
+                        print('> Local checksum discrepancy: {}'.format(source_media_file.path) + 
+                            '\n > Real checksum: {}'.format(source_media_file.real_checksum) + 
+                            '\n > Cached checksum: {}'.format(source_media_file.cached_checksum)
+                        )
 
-                    #  Determine which mirror this media belongs to
-                    if mirror is 'source':
-                        this_mirror = self.source_mirror
-                        other_mirror = self.backup_mirror
-                    else:
-                        this_mirror = self.backup_mirror
-                        other_mirror = self.source_mirror
+                        input_string = (
+                            '1. File is valid. Update the local cache file with new checksum value.' +
+                            '\n2. Print the backup file\'s checksum values.' +
+                            '\n3. File is not valid.  Overwrite this file with file from backup.' +
+                            '\n4. Skip for now.' +
+                            '\nChoose an option: '
+                        )
+                        result = input(input_string)
 
-                    #  Determine whether the media exists on the other mirror
-                    if path_in_library in other_mirror.libraries[library].media:
-                        mirror_media = other_mirror.libraries[library].media[path_in_library]
-                    else:
-                        mirror_media = None
-
-                    input_string = (
-                        '1. File is valid. Update local cache.' +
-                        '\n2. File is corrupt. Restore from mirror.' +
-                        '\n3. Skip for now.' +
-                        '\nChoose an option: '
-                    )
-                    result = input(input_string)
-
-                    if result == '1':
-                        #  The file is valid.  Update the cache file with the new checksum
-                        this_mirror.libraries[library].media[path_in_library].save_checksum_to_file(overwrite=True)
-                        this_mirror.libraries[library].media[path_in_library].load_checksum_from_file()
-                        break
-                    elif result == '2':
-                        #  The file is not valid.  Delete the file then copy from other mirror
-                        if mirror_media:
-                            #  The file exists on the other mirror.  Proceed
-                            this_mirror.libraries[library].delete_media(path_in_library)
-                            this_mirror.libraries[library].copy_media(mirror_media.path, path_in_library, mirror_media.real_checksum)
-                            break
+                        #  Determine whether the media exists on the backup mirror
+                        path_in_library = source_media_file.path_in_library
+                        if path_in_library in self.backup_mirror.libraries[library_name]:
+                            backup_media_file = self.backup_mirror.libraries[library_name].media[path_in_library]
                         else:
-                            #  The file does not exist on the other mirror
-                            #  Tell the user and let the user act
-                            print('Error: File does not exist in Backup mirror')
-                            # Don't break
-                    elif result == '3':
-                        #  Skip this file
-                        break
+                            backup_media_file = None
+
+                        if result == '1':
+                            #  The file is valid.  Update the cache file with the new checksum
+                            source_media_file.save_checksum_to_file(overwrite=True)
+                            source_media_file.load_checksum_from_file()
+                            break
+                        elif result == '2':
+                            if backup_media_file:
+                                print('> Backup file: {}'.format(backup_media_file.path) + 
+                                    '\n > Real checksum: {}'.format(backup_media_file.real_checksum) + 
+                                    '\n > Cached checksum: {}'.format(backup_media_file.cached_checksum)
+                                )
+                            else:
+                                print('> Backup file not found.')
+                        elif result == '3':
+                            if backup_media_file:
+                                #  todo - instead of deleting the media, put the media in a temp location
+                                #         that way the delete can be undone if the copy goes bad
+                                self.source_mirror.libraries[library_name].delete_media(path_in_library)
+                                self.source_mirror.libraries[library_name].copy_media(
+                                    backup_media_file.path,
+                                    path_in_library,
+                                    backup_media_file.real_checksum
+                                )
+                                break
+                            else:
+                                print('> Backup file not found.')
+                        elif result == '4':
+                            break
+        else:
+            raise BaseException('Mirrors not loaded')
+
+    def process_backup_local_checksum_discrepancies(self):
+        if self.mirrors_loaded:
+            for library_name in self.backup_mirror.libraries:
+                backup_media_files = list()
+                for media_file in self.backup_mirror.libraries[library_name].yield_media_with_local_checksum_discrepancy():
+                    backup_media_files.append(media_file)
+
+                for backup_media_file in backup_media_files:
+                    while True:
+                        print('> Local checksum discrepancy: {}'.format(backup_media_file.path) + 
+                            '\n > Real checksum: {}'.format(backup_media_file.real_checksum) + 
+                            '\n > Cached checksum: {}'.format(backup_media_file.cached_checksum)
+                        )
+
+                        input_string = (
+                            '1. File is valid. Update the local cache file with new checksum value.' +
+                            '\n2. Print the source file\'s checksum values.' +
+                            '\n3. File is not valid.  Overwrite this file with file from source.' +
+                            '\n4. Skip for now.' +
+                            '\nChoose an option: '
+                        )
+                        result = input(input_string)
+
+                        #  Determine whether the media exists on the source mirror
+                        path_in_library = backup_media_file.path_in_library
+                        if path_in_library in self.source_mirror.libraries[library_name]:
+                            source_media_file = self.backup_mirror.libraries[library_name].media[path_in_library]
+                        else:
+                            source_media_file = None
+
+                        if result == '1':
+                            #  The file is valid.  Update the cache file with the new checksum
+                            backup_media_file.save_checksum_to_file(overwrite=True)
+                            backup_media_file.load_checksum_from_file()
+                            break
+                        elif result == '2':
+                            if source_media_file:
+                                print('> Source file: {}'.format(source_media_file.path) + 
+                                    '\n > Real checksum: {}'.format(source_media_file.real_checksum) + 
+                                    '\n > Cached checksum: {}'.format(source_media_file.cached_checksum)
+                                )
+                            else:
+                                print('> Source file not found.')
+                        elif result == '3':
+                            if source_media_file:
+                                #  todo - instead of deleting the media, put the media in a temp location
+                                #         that way the delete can be undone if the copy goes bad
+                                self.backup_mirror.libraries[library_name].delete_media(path_in_library)
+                                self.backup_mirror.libraries[library_name].copy_media(
+                                    source_media_file.path,
+                                    path_in_library,
+                                    source_media_file.real_checksum
+                                )
+                                break
+                            else:
+                                print('> Source file not found.')
+                        elif result == '4':
+                            break
+        else:
+            raise BaseException('Mirrors not loaded')
+
+    #  - Compare the checksum values; calculating the real checksum for every file is going to take too long
+    #  - Trust that user/script knows to resolve local checksum errors before tackling mirror checksum errors
+    def yield_media_with_mirror_checksum_discrepancy(self):
+        if self.mirrors_loaded:
+            for library_name in self.source_mirror.libraries:
+                for path_in_library in self.source_mirror.libraries[library_name].media:
+                    source_media = self.source_mirror.libraries[library_name].media[path_in_library]
+
+                    #  Verify the media also exists on the backup
+                    if path_in_library in self.backup_mirror.libraries[library_name].media:
+                        backup_media = self.backup_mirror.libraries[library_name].media[path_in_library]
+                        if source_media.cached_checksum != backup_media.cached_checksum:
+                            yield {
+                                'library_name': library_name,
+                                'source_media': source_media,
+                                'backup_media': backup_media
+                            }
+                    else:
+                        pass  #  There is nothing to verify
+            #  Do not repeat for backup mirror
+            #  By definition, it's' impossible for a mirror checksum error to exist /just/ on the backup
         else:
             raise BaseException('Mirrors not loaded')
 
     #  This requires user input
-    def process_mirror_checksum_errors(self):
+    def process_mirror_checksum_discrepancies(self):
         if self.mirrors_loaded:
-            for mirror, library, path_in_library in self.yield_media_with_mirror_checksum_error():
+            mirror_checksum_discrepancies = list(media for media in self.yield_media_with_mirror_checksum_discrepancy())
+            for media_with_mirror_checksum_discrepancy in mirror_checksum_discrepancies:
                 while True:
-                    print('> Mirror checksum error: [{}]/{}/{}'.format(
-                        mirror,
-                        library,
-                        path_in_library)
+                    library_name = media_with_mirror_checksum_discrepancy['library_name']
+                    source_media = media_with_mirror_checksum_discrepancy['source_media']
+                    backup_media = media_with_mirror_checksum_discrepancy['backup_media']
+                    path_in_library = source_media.path_in_library
+
+                    print('> Mirror checksum discrepancy: {}'.format(path_in_library) + 
+                        '\n > Source real checksum: {}'.format(source_media.real_checksum) + 
+                        '\n > Backup real checksum: {}'.format(backup_media.real_checksum) +
+                        '\n > Source cached checksum: {}'.format(source_media.cached_checksum) +
+                        '\n > Backup cached checksum: {}'.format(backup_media.cached_checksum)
                     )
 
                     input_string = (
@@ -407,23 +303,13 @@ class MirrorManager(object):
 
                     if result == '1':
                         # Source file is good; overwrite backup file
-                        good_media = self.source_mirror.libraries[library].media[path_in_library]
-                        if os.path.exists(good_media.path):
-                            self.backup_mirror.libraries[library].delete_media(path_in_library)
-                            self.backup_mirror.libraries[library].copy_media(good_media.path, path_in_library, good_media.real_checksum)
-                        else:
-                            print('Error: Files does not exists in Backup')
-                            # Don't break
+                        self.backup_mirror.libraries[library_name].delete_media(path_in_library)
+                        self.backup_mirror.libraries[library_name].copy_media(source_media.path, path_in_library, source_media.real_checksum)
                         break
                     elif result == '2':
                         # Backup file is good; overwrite source file
-                        good_media = self.backup_mirror.libraries[library].media[path_in_library]
-                        if os.path.exists(good_media.path):
-                            self.source_mirror.libraries[library].delete_media(path_in_library)
-                            self.source_mirror.libraries[library].copy_media(good_media.path, path_in_library, good_media.real_checksum)
-                        else:
-                            print('Error: File does not exist in Source')
-                            # Don't break
+                        self.source_mirror.libraries[library_name].delete_media(path_in_library)
+                        self.source_mirror.libraries[library_name].copy_media(backup_media.path, path_in_library, backup_media.real_checksum)
                         break
                     elif result == '3':
                         break
