@@ -106,6 +106,13 @@ class MirrorManager(object):
             count += 1
         return count
 
+    @property
+    def orphan_backup_media_count(self):
+        count = 0
+        for _ in self.yield_orphan_backup_media():
+            count += 1
+        return count
+
     def load_mirrors(self):
         for library in self.libraries:
             self.source_mirror.load_library(library)

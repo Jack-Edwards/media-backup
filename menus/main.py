@@ -17,7 +17,7 @@ def run(manager):
             '\n5. (Backup) Resolve local checksum discrepancies ({})'.format(len(manager.backup_mirror.media_with_local_checksum_discrepancy)) +
             '\n6. Resolve mirror checksum discrepancies ({})'.format(manager.mirror_checksum_discrepancy_count) +
             '\n7.1. Delete orphan cache files ({})'.format(orphan_cache_file_count) +
-            '\n7.2. Process orphan backup files ({})'.format(manager.orphan_backup_file_count) +
+            '\n7.2. Process orphan backup files ({})'.format(manager.orphan_backup_media_count) +
             '\n7.3. Delete empty directories ({})'.format(empty_directory_count) +
             '\n9. Refresh' +
             '\n0. Exit' +
