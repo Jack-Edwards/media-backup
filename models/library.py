@@ -174,11 +174,12 @@ class Library(object):
         for dirpath, _, filenames in os.walk(self.path):
             if '.cache' in dirpath:
                 for cache_file in filenames:
-                    parent_directory = os.path.dirname(dirpath)
-                    media_file_name = os.path.splitext(cache_file)[0]
-                    media_file_path = os.path.join(parent_directory, media_file_name)
-                    if not os.path.exists(media_file_path):
-                        yield os.path.join(dirpath, cache_file)
+                    if os.path.splitext(cache_file)[1] == '.txt':
+                        parent_directory = os.path.dirname(dirpath)
+                        media_file_name = os.path.splitext(cache_file)[0]
+                        media_file_path = os.path.join(parent_directory, media_file_name)
+                        if not os.path.exists(media_file_path):
+                            yield os.path.join(dirpath, cache_file)
 
     def delete_orphan_cache_files(self):
         #  Description
@@ -212,7 +213,7 @@ class Library(object):
         #    cache/checksum file, one at a time
 
         for media_file in self.media.values():
-            if media_file.cache_is_stale():
+            if media_file.cache_is_stale:
                 yield media_file
 
     def refresh_stale_cache_files(self):
@@ -227,7 +228,8 @@ class Library(object):
 
         for media_file in self.yield_media_with_stale_cache_file():
             if media_file.real_and_cached_checksums_match:
-                media_file.refresh_checksum()
+                yield media_file.path
+                media_file.refresh_cache()
 
     def yield_media_with_local_checksum_discrepancy(self):
         #  Description
@@ -250,5 +252,5 @@ class Library(object):
 
         for media in self.media.values():
             if media.real_checksum_has_been_set:
-                if not media.real_and_cached_checksums_match():
+                if not media.real_and_cached_checksums_match:
                     yield media

@@ -28,11 +28,6 @@ class BaseMirror(object):
             source=self.source
         )
 
-        media_files_with_checksum_discrepancies = list()
-        for library in self.libraries:
-            media_files_with_checksum_discrepancies += library.refresh_stale_cache_files()
-        return media_files_with_checksum_discrepancies
-
     @property
     def media_with_stale_cache_file(self):
         media_with_stale_cache_file = list()
@@ -42,20 +37,20 @@ class BaseMirror(object):
         return media_with_stale_cache_file
 
     @property
-    def empty_directories(self):
-        empty_directories = list()
+    def empty_directory_count(self):
+        count = 0
         for library in self.libraries.values():
-            for directory in library.yield_empty_directories():
-                empty_directories.append(directory)
-        return empty_directories
+            for _ in library.yield_empty_directories():
+                count += 1
+        return count
 
     @property
-    def orphan_cache_files(self):
-        orphan_cache_files = list()
+    def orphan_cache_file_count(self):
+        count = 0
         for library in self.libraries.values():
-            for cache_file in library.yield_orphan_cache_files():
-                orphan_cache_files.append(cache_file)
-        return orphan_cache_files
+            for _ in library.yield_orphan_cache_files():
+                count += 1
+        return count
 
     @property
     def media_with_local_checksum_discrepancy(self):
@@ -67,8 +62,20 @@ class BaseMirror(object):
 
     def refresh_stale_cache_files(self):
         for library in self.libraries.values():
-            library.refresh_stale_cache_files()
+            for media_with_stale_cache in library.refresh_stale_cache_files():
+                yield media_with_stale_cache
 
+    def delete_empty_directories(self):
+        deleted_directories = list()
+        for library in self.libraries.values():
+            deleted_directories += library.delete_empty_directories()
+        return deleted_directories
+
+    def delete_orphan_cache_files(self):
+        deleted_files = list()
+        for library in self.libraries.values():
+            deleted_files += library.delete_orphan_cache_files()
+        return deleted_files
 
 class SourceMirror(BaseMirror):
     def __init__(self, path):
@@ -127,6 +134,7 @@ class MirrorManager(object):
             for library, path_in_library in self.yield_source_media_not_backed_up():
                 media = self.source_mirror.libraries[library].media[path_in_library]
                 if media.real_checksum == media.cached_checksum:
+                    yield media.path
                     self.backup_mirror.libraries[library].copy_media(media.path, media.path_in_library, media.real_checksum)
         else:
             raise BaseException('Mirrors not loaded')
@@ -154,7 +162,7 @@ class MirrorManager(object):
 
                         #  Determine whether the media exists on the backup mirror
                         path_in_library = source_media_file.path_in_library
-                        if path_in_library in self.backup_mirror.libraries[library_name]:
+                        if path_in_library in self.backup_mirror.libraries[library_name].media:
                             backup_media_file = self.backup_mirror.libraries[library_name].media[path_in_library]
                         else:
                             backup_media_file = None
@@ -215,7 +223,7 @@ class MirrorManager(object):
 
                         #  Determine whether the media exists on the source mirror
                         path_in_library = backup_media_file.path_in_library
-                        if path_in_library in self.source_mirror.libraries[library_name]:
+                        if path_in_library in self.source_mirror.libraries[library_name].media:
                             source_media_file = self.backup_mirror.libraries[library_name].media[path_in_library]
                         else:
                             source_media_file = None
@@ -286,10 +294,10 @@ class MirrorManager(object):
                     backup_media = media_with_mirror_checksum_discrepancy['backup_media']
                     path_in_library = source_media.path_in_library
 
-                    print('> Mirror checksum discrepancy: {}'.format(path_in_library) + 
-                        '\n > Source real checksum: {}'.format(source_media.real_checksum) + 
-                        '\n > Backup real checksum: {}'.format(backup_media.real_checksum) +
+                    print('> Mirror checksum discrepancy: {}>{}'.format(library_name, path_in_library) + 
+                        '\n > Source real checksum:   {}'.format(source_media.real_checksum) + 
                         '\n > Source cached checksum: {}'.format(source_media.cached_checksum) +
+                        '\n > Backup real checksum:   {}'.format(backup_media.real_checksum) +
                         '\n > Backup cached checksum: {}'.format(backup_media.cached_checksum)
                     )
 
