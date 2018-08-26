@@ -176,8 +176,8 @@ class MirrorManager(object):
 
                         if result == '1':
                             #  The file is valid.  Update the cache file with the new checksum
-                            source_media_file.save_checksum_to_file(overwrite=True)
-                            source_media_file.load_checksum_from_file()
+                            source_media_file.save_checksum_to_cache(overwrite=True)
+                            source_media_file.load_checksum_from_cache()
                             break
                         elif result == '2':
                             if backup_media_file:
