@@ -323,3 +323,48 @@ class MirrorManager(object):
                         break
         else:
             raise BaseException('Mirrors not loaded')
+
+    def yield_orphan_backup_media(self):
+        if self.mirrors_loaded:
+            for library_name in self.source_mirror.libraries:
+                for path_in_library in self.backup_mirror.libraries[library_name].media:
+                    if path_in_library not in self.source_mirror.libraries[library_name].media:
+                        yield {
+                            'library_name': library_name,
+                            'path_in_library': path_in_library
+                        }
+        else:
+            raise BaseException('Mirrors not loaded')
+
+    #  This could be automatic, but I want to make it require user input
+    def process_orphan_backup_media(self):
+        if self.mirrors_loaded:
+            orphan_backup_media = list(media for media in self.yield_orphan_backup_media())
+            for orphan in orphan_backup_media:
+                library_name = orphan['library_name']
+                path_in_library = orphan['path_in_library']
+                while True:
+                    print('> Orphan backup file: {}/{}'.format(
+                        library_name,
+                        path_in_library
+                    ))
+
+                    input_string = (
+                        '1. Delete the file' +
+                        '\n2. Restore the file' +
+                        '\n3. Skip for now' +
+                        '\nChoose an option: '
+                    )
+                    result = input(input_string)
+
+                    if result == '1':
+                        self.backup_mirror.libraries[library_name].delete_media(path_in_library)
+                        break
+                    elif result == '2':
+                        backup_media = self.backup_mirror.libraries[library_name].media[path_in_library]
+                        self.source_mirror.libraries[library_name].copy_media(backup_media.path, path_in_library, backup_media.real_checksum)
+                        break
+                    elif result == '3':
+                        break
+        else:
+            raise BaseException('Mirrors not loaded')
