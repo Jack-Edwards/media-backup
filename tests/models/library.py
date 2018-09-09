@@ -130,7 +130,7 @@ class LibraryTestMethods(unittest.TestCase):
         library_object = library.Library(mock_library.name, mock_library.path, mock_library.source)
 
         #  Load all media and assert all media were found
-        library_object.load_all_media()
+        self.assertTrue(library_object.load_all_media().success)
         self.assertEqual(len(media_in_library), len(library_object.media))
 
         #  Load all media again; assert the library's list of media did not change
@@ -173,10 +173,12 @@ class LibraryTestMethods(unittest.TestCase):
         for media_name in other_library_object.media:
             if media_name not in target_library_object.media:
                 copy_count += 1
-                target_library_object.copy_media(
-                    other_library_object.media[media_name].path,
-                    other_library_object.media[media_name].path_in_library,
-                    other_library_object.media[media_name].real_checksum
+                self.assertTrue(
+                    target_library_object.copy_media(
+                        other_library_object.media[media_name].path,
+                        other_library_object.media[media_name].path_in_library,
+                        other_library_object.media[media_name].real_checksum
+                    ).success
                 )
 
                 #  Assertions
@@ -225,12 +227,13 @@ class LibraryTestMethods(unittest.TestCase):
             if media_name in target_library_object.media:
                 copy_count += 1
                 target_file_last_modified = os.path.getmtime(target_library_object.media[media_name].path)
-                with self.assertRaises(FileExistsError):
+                self.assertFalse(
                     target_library_object.copy_media(
                         other_library_object.media[media_name].path,
                         other_library_object.media[media_name].path_in_library,
                         other_library_object.media[media_name].real_checksum
-                    )
+                    ).success
+                )
                 self.assertTrue(media_name in target_library_object.media)
                 self.assertTrue(os.path.exists(target_library_object.media[media_name].path))
                 self.assertEqual(

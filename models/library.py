@@ -2,6 +2,7 @@ import os
 import shutil
 
 from .media_file import MediaFile
+from .result import Result
 
 class Library(object):
     def __init__(self, name: str, path: str, source: bool):
@@ -54,6 +55,8 @@ class Library(object):
                         filepath_in_library = filepath.replace(self.path + os.sep, '')
                         self.media[filepath_in_library] = MediaFile(filepath, filepath_in_library, self.source)
 
+        return Result(subject=self.path, success=True)
+
     def copy_media(self, source_filepath, path_in_library, source_checksum):
         #  Description
         #    Copy a media file into the library from an outside location
@@ -72,7 +75,11 @@ class Library(object):
         if os.path.exists(source_filepath):
             destination_filepath= os.path.join(self.path, path_in_library)
             if os.path.exists(destination_filepath):
-                raise FileExistsError('File already exists in library')
+                return Result(
+                    subject=source_filepath,
+                    success=False,
+                    message='Media already exists in library.'
+                )
             else:
                 #  Make missing directories
                 if not os.path.exists(os.path.dirname(destination_filepath)):
@@ -88,12 +95,27 @@ class Library(object):
                 if self.media[path_in_library].real_checksum == source_checksum:
                     self.media[path_in_library].save_checksum_to_cache(overwrite=False)
                     self.media[path_in_library].load_checksum_from_cache()
+                    return Result(subject=source_filepath, success=True)
                 else:
                     #  Something went wrong, undo the copy
+                    copied_file_checksum = self.media[path_in_library].real_checksum
                     self.delete_media(path_in_library)
-                    raise IOError('Checksums did not match')
+                    return Result(
+                        subject=source_filepath,
+                        success=False,
+                        message=(
+                            'Checksums for source file and copied file do not match.' +
+                            '\nThe copied file has been deleted.' +
+                            '\nSource file checksum: {}'.format(source_checksum) +
+                            '\nCopied file checksum: {}'.format(copied_file_checksum)
+                        )
+                    )
         else:
-            raise FileNotFoundError('File does not exist')
+            return Result(
+                subject=source_filepath,
+                success=False,
+                message='Source file does not exist.'
+            )
 
     def delete_media(self, path_in_library):
         #  Description

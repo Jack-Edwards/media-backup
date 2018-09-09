@@ -1,6 +1,7 @@
 import os
 
 from .library import Library
+from .result import Result
 
 class BaseMirror(object):
     def __init__(self, path: str, source: bool):
@@ -139,10 +140,20 @@ class MirrorManager(object):
     def backup_new_source_media(self):
         if self.mirrors_loaded:
             for library, path_in_library in self.yield_source_media_not_backed_up():
-                media = self.source_mirror.libraries[library].media[path_in_library]
-                if media.real_checksum == media.cached_checksum:
-                    yield media.path
-                    self.backup_mirror.libraries[library].copy_media(media.path, media.path_in_library, media.real_checksum)
+                source_media = self.source_mirror.libraries[library].media[path_in_library]
+                if source_media.real_checksum == source_media.cached_checksum:
+                    copy_result = self.backup_mirror.libraries[library].copy_media(source_media.path, source_media.path_in_library, source_media.real_checksum)
+                    yield copy_result
+                else:
+                    yield Result(
+                        subject=source_media.path,
+                        success=False,
+                        message=(
+                            'Cannot backup media with local checksum discrepancy.' +
+                            '\nReal checksum: {}'.format(source_media.real_checksum) +
+                            '\nCached checksum: {}'.format(source_media.cached_checksum)
+                        )
+                    )
         else:
             raise BaseException('Mirrors not loaded')
 

@@ -27,8 +27,15 @@ def run(manager):
         result = input(input_string)
         print('')
         if result == '1':
-            for new_source_media in manager.backup_new_source_media():
-                print('Backing up: {}'.format(new_source_media))
+            print('Starting backup of new source media.')
+            for backup_result in manager.backup_new_source_media():
+                if backup_result.success:
+                    print('Backup success: {}'.format(backup_result.subject))
+                else:
+                    print(
+                        'Backup FAILURE: {}'.format(backup_result.subject) +
+                        '\n > Message: {}'.format(backup_result.message)
+                    )
         elif result == '2':
             for media_with_stale_cache in manager.source_mirror.refresh_stale_cache_files():
                 print('Refreshing cache: {}'.format(media_with_stale_cache))
