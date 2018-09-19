@@ -8,13 +8,13 @@ from PyQt5.QtWidgets import QHBoxLayout
 from PyQt5.QtWidgets import QVBoxLayout
 from PyQt5.QtWidgets import QGridLayout
 from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QToolButton
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QGroupBox
 from PyQt5.QtWidgets import QFrame
 from PyQt5.QtWidgets import QTreeView
 from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtWidgets import QToolButton
 from PyQt5.QtWidgets import QFileSystemModel
 
 class MainWindow(QMainWindow):
@@ -66,12 +66,12 @@ class MainWindow(QMainWindow):
         self.lineEdit_Source.setObjectName('lineEdit_Source')
         self.gridLayout.addWidget(self.lineEdit_Source, 0, 0, 1, 4)
 
-        #  Add the 'Browse' pushButton for the 'Source' lineEdit
-        self.pushButton_BrowseForSource = QToolButton(self.central_widget)
-        self.pushButton_BrowseForSource.setObjectName('pushButton_BrowseForSource')
-        self.pushButton_BrowseForSource.setText('...')
-        self.pushButton_BrowseForSource.clicked.connect(self.browse_button_clicked)
-        self.gridLayout.addWidget(self.pushButton_BrowseForSource, 0, 4, 1, 1)
+        #  Add the 'Browse' toolButton for the 'Source' lineEdit
+        self.toolButton_BrowseForSource = QToolButton(self.central_widget)
+        self.toolButton_BrowseForSource.setObjectName('toolButton_BrowseForSource')
+        self.toolButton_BrowseForSource.setText('...')
+        self.toolButton_BrowseForSource.clicked.connect(self.browse_button_clicked)
+        self.gridLayout.addWidget(self.toolButton_BrowseForSource, 0, 4, 1, 1)
 
         #  Add the 'Load' pushButton for the 'Source' lineEdit
         self.pushButton_LoadSource = QPushButton(self.central_widget)
@@ -88,12 +88,12 @@ class MainWindow(QMainWindow):
         self.lineEdit_Backup.setObjectName('lineEdit_Backup')
         self.gridLayout.addWidget(self.lineEdit_Backup, 1, 0, 1, 4)
 
-        #  Add the 'Browse' pushButton for the 'Backup' lineEdit
-        self.pushButton_BrowseForBackup = QToolButton(self.central_widget)
-        self.pushButton_BrowseForBackup.setObjectName('pushButton_BrowseForBackup')
-        self.pushButton_BrowseForBackup.setText('...')
-        self.pushButton_BrowseForBackup.clicked.connect(self.browse_button_clicked)
-        self.gridLayout.addWidget(self.pushButton_BrowseForBackup, 1, 4, 1, 1)
+        #  Add the 'Browse' toolButton for the 'Backup' lineEdit
+        self.toolButton_BrowseForBackup = QToolButton(self.central_widget)
+        self.toolButton_BrowseForBackup.setObjectName('toolButton_BrowseForBackup')
+        self.toolButton_BrowseForBackup.setText('...')
+        self.toolButton_BrowseForBackup.clicked.connect(self.browse_button_clicked)
+        self.gridLayout.addWidget(self.toolButton_BrowseForBackup, 1, 4, 1, 1)
 
         #  Add the 'Load' pushButton for the 'Backup' lineEdit
         self.pushButton_LoadBackup = QPushButton(self.central_widget)
@@ -113,10 +113,10 @@ class MainWindow(QMainWindow):
 
     def browse_button_clicked(self):
         sender_name = self.sender().objectName()
-        assert(sender_name == 'pushButton_BrowseForSource' or sender_name == 'pushButton_BrowseForBackup')
+        assert(sender_name == 'toolButton_BrowseForSource' or sender_name == 'toolButton_BrowseForBackup')
         
         #  Open a file-picker dialog
-        source_or_backup = 'Source' if sender_name == 'pushButton_BrowseForSource' else 'Backup'
+        source_or_backup = 'Source' if sender_name == 'toolButton_BrowseForSource' else 'Backup'
         caption = 'Select {} Directory'.format(source_or_backup)
 
         directory = self.show_file_dialog(caption)
@@ -148,7 +148,6 @@ class MainWindow(QMainWindow):
         return directory if directory else None
 
     def load_button_clicked(self, directory):
-        print(directory)
         assert(os.path.exists(directory))
         treeview_model = QFileSystemModel()
         self.treeView.setModel(treeview_model)
