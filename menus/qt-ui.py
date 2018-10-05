@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def init_ui(self):
-        self.setGeometry(50, 50, 400, 500)
+        self.setGeometry(100, 100, 500, 500)
         self.setWindowTitle('Media-Backup')
 
         self.init_menu_bar()
@@ -182,9 +182,15 @@ class TreeviewModel(QStandardItemModel):
         #  super().__init__(rows, columns, parent)
         super().__init__(0, 4, parent)
 
-        self.NAME, self.SIZE, self.TYPE, self.DATE_MODIFIED = range(4)
+        #  Column indexes
+        self.NAME = 0
+        self.SIZE = 1
+        self.TYPE = 2
+        self.DATE_MODIFIED = 3
+
+        #  Load the treeview
         self.set_headers()
-        self.set_parent_nodes()
+        self.set_parent_rows()
 
     def set_headers(self):
         self.setHeaderData(self.NAME, Qt.Horizontal, 'Name')
@@ -192,19 +198,43 @@ class TreeviewModel(QStandardItemModel):
         self.setHeaderData(self.TYPE, Qt.Horizontal, 'Type')
         self.setHeaderData(self.DATE_MODIFIED, Qt.Horizontal, 'Date Modified')
 
-    def set_parent_nodes(self):
-        parent = QStandardItem('parent')
-        child = QStandardItem('child')
-        parent.appendRow(child)
-        self.appendRow(parent)
+    def set_parent_rows(self):
+        self.root = self.invisibleRootItem()
+        self.source_item = MirrorItem('Source', None)
+        self.backup_item = MirrorItem('Backup', None)
 
-    def add_row(self, name, size, type, date_modified):
-        self.insertRow(0)
-        self.setData(self.index(0, self.NAME), name)
-        self.setData(self.index(0, self.SIZE), size)
-        self.setData(self.index(0, self.TYPE), type)
-        self.setData(self.index(0, self.DATE_MODIFIED), date_modified)
+        self.root.appendRow(self.source_item.as_row())
+        self.root.appendRow(self.backup_item.as_row())
 
+    def row_model(self, name, size=None, type=None, date_modified=None):
+        name_item = QStandardItem(name)
+        size_item = QStandardItem(size)
+        type_item = QStandardItem(type)
+        date_item = QStandardItem(date_modified)
+        return [
+            name_item,
+            size_item,
+            type_item,
+            date_item
+        ]
+
+    def get_selected_index(self):
+        return
+
+
+class MirrorItem(QStandardItem):
+    def __init__(self, name, path):
+        QStandardItem.__init__(self, name)
+        self.name = name
+        self.path = path
+
+    def as_row(self):
+        return [
+            QStandardItem(self.name),
+            QStandardItem(None),
+            QStandardItem('Mirror'),
+            QStandardItem(None)
+        ]
 
 app = QApplication(sys.argv)
 GUI = MainWindow()
