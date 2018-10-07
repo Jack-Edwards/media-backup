@@ -200,41 +200,65 @@ class TreeviewModel(QStandardItemModel):
 
     def set_parent_rows(self):
         self.root = self.invisibleRootItem()
-        self.source_item = MirrorItem('Source', None)
-        self.backup_item = MirrorItem('Backup', None)
+        self.source_item = MirrorItem('Source')
+        self.backup_item = MirrorItem('Backup')
 
         self.root.appendRow(self.source_item.as_row())
         self.root.appendRow(self.backup_item.as_row())
 
-    def row_model(self, name, size=None, type=None, date_modified=None):
-        name_item = QStandardItem(name)
-        size_item = QStandardItem(size)
-        type_item = QStandardItem(type)
-        date_item = QStandardItem(date_modified)
-        return [
-            name_item,
-            size_item,
-            type_item,
-            date_item
-        ]
+        #  temp
+        self.test_method()
 
     def get_selected_index(self):
         return
 
+    def test_method(self):
+        self.source_libraries = [
+            LibraryItem('Videos'),
+            LibraryItem('TV Shows'),
+            LibraryItem('Music')
+        ]
 
-class MirrorItem(QStandardItem):
-    def __init__(self, name, path):
+        self.backup_libraries = [
+            LibraryItem('Videos'),
+            LibraryItem('TV Shows'),
+            LibraryItem('Music')
+        ]
+
+        [self.source_item.appendRow(library.as_row()) for library in self.source_libraries]
+        [self.backup_item.appendRow(library.as_row()) for library in self.backup_libraries]
+
+class GenericItem(QStandardItem):
+    def __init__(self, name, size=None, type=None, date_modified=None):
         QStandardItem.__init__(self, name)
         self.name = name
-        self.path = path
+        self.size = size
+        self.type = type
+        self.date_modified = date_modified
 
     def as_row(self):
         return [
-            QStandardItem(self.name),
-            QStandardItem(None),
-            QStandardItem('Mirror'),
-            QStandardItem(None)
+            self,
+            QStandardItem(self.size),
+            QStandardItem(self.type),
+            QStandardItem(self.date_modified)
         ]
+
+class MirrorItem(GenericItem):
+    def __init__(self, name):
+        GenericItem.__init__(self, name, type='Mirror')
+
+class LibraryItem(GenericItem):
+    def __init__(self, name):
+        GenericItem.__init__(self, name, type='Library')
+
+class DirectoryItem(GenericItem):
+    def __init__(self, name):
+        GenericItem.__init__(self, name, type='Directory')
+
+class MediaItem(GenericItem):
+    def __init__(self, name):
+        GenericItem.__init__(self, name, type='Media')
 
 app = QApplication(sys.argv)
 GUI = MainWindow()
