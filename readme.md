@@ -2,7 +2,7 @@
 Command-line interface to help backup and maintain your media libraries.
 
 ## Intended Use-Cases
-* Automatically. backup new files from the 'source' location to the 'backup' location
+* Automatically backup new files from the 'source' location to the 'backup' location
 * Automatically perform 'safe' maintenance operations, including removal of empty directories.
 * Automatically verify the integrity of a media file has not changed since the last backup.
 * Get notified when the integrity of a media file has changed and choose how to proceed.
@@ -30,8 +30,7 @@ Command-line interface to help backup and maintain your media libraries.
     * python -m media-backup.run
     * /or/
     * python3 -m media-backup.run
-6. Media-Backup performs a startup scan.  Every path in **libraries** must exist in the **source_path** location.  A directory will be created for each path in **libraries** that does not exist in **backup_path**.  All libraries under **source_path** and **backup_path** are scanned for media files.
-7. The main menu will appear.
+6. The main menu will appear.
 
 ## Keep Backing Up
 * Regularly run Media-Backup to backup new media files and verify the integrity of media files that have already been backed up.

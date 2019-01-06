@@ -50,7 +50,7 @@ class LibraryTests(unittest.TestCase):
             self.sandbox.backup_videos_library
         )
 
-    def test_copy_new_media_to_backup_source_video_library(self):
+    def test_copy_new_media_to_backup_video_library(self):
         LibraryTestMethods().copy_new_media(
             self.sandbox.backup_videos_library,
             self.sandbox.source_videos_library
@@ -96,22 +96,6 @@ class LibraryTests(unittest.TestCase):
             file_path
         )
 
-    def test_yield_empty_directories(self):
-        #  todo
-        self.assertTrue(False)
-
-    def test_delete_empty_directories(self):
-        #  todo
-        self.assertTrue(False)
-
-    def test_yield_orphan_cache_files(self):
-        #  todo
-        self.assertTrue(False)
-
-    def test_delete_orphan_cache_files(self):
-        #  todo
-        self.assertTrue(False)
-
 class LibraryTestMethods(unittest.TestCase):
     #  Re-usable methods
 
@@ -130,11 +114,11 @@ class LibraryTestMethods(unittest.TestCase):
         library_object = library.Library(mock_library.name, mock_library.path, mock_library.source)
 
         #  Load all media and assert all media were found
-        self.assertTrue(library_object.load_all_media().success)
+        self.assertTrue(library_object.load_all_media(callback_on_progress=None))
         self.assertEqual(len(media_in_library), len(library_object.media))
 
         #  Load all media again; assert the library's list of media did not change
-        library_object.load_all_media()
+        library_object.load_all_media(False)
         self.assertEqual(len(media_in_library), len(library_object.media))
 
         #  Assert all files were init'd properly
@@ -162,8 +146,8 @@ class LibraryTestMethods(unittest.TestCase):
         other_library_object = library.Library(other_mock_library.name, other_mock_library.path, other_mock_library.source)
 
         #  Load the Library objects
-        target_library_object.load_all_media()
-        other_library_object.load_all_media()
+        target_library_object.load_all_media(callback_on_progress=None)
+        other_library_object.load_all_media(callback_on_progress=None)
 
         original_target_media_count = len(target_library_object.media)
 
@@ -215,8 +199,8 @@ class LibraryTestMethods(unittest.TestCase):
         other_library_object = library.Library(other_mock_library.name, other_mock_library.path, other_mock_library.source)
 
         #  Load the Library objects
-        target_library_object.load_all_media()
-        other_library_object.load_all_media()
+        target_library_object.load_all_media(False)
+        other_library_object.load_all_media(False)
 
         original_target_media_count = len(target_library_object.media)
 
@@ -248,7 +232,7 @@ class LibraryTestMethods(unittest.TestCase):
         library_object = library.Library(mock_library.name, mock_library.path, mock_library.source)
 
         #  Load the library; assert media were actually found
-        library_object.load_all_media()
+        library_object.load_all_media(False)
         self.assertEqual(len(library_object.media), 18)
 
         #  Generate a cache file for each media in the library
@@ -280,7 +264,7 @@ class LibraryTestMethods(unittest.TestCase):
         self.assertIn(library_object.path, file_to_ignore.path)
 
         #  Load the library; assert the 'file_to_ignore' was not loaded
-        library_object.load_all_media()
+        library_object.load_all_media(False)
         self.assertEqual(len(library_object.media), 18)
         self.assertNotIn(
             file_to_ignore.name,

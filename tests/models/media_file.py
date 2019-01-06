@@ -141,7 +141,7 @@ class MediaFileTestMethods(unittest.TestCase):
         self.assertEqual(media_file_object.cached_date, today)
 
         #  Assert the cache is not flagged as 'stale'
-        self.assertFalse(media_file_object.cache_is_stale)
+        self.assertFalse(media_file_object.cache_is_stale(stale_cache_days=90))
 
         #  Modify the cache date for the next assertion
         with open(media_file_object.cache_file, 'r') as cache_file:
@@ -150,8 +150,8 @@ class MediaFileTestMethods(unittest.TestCase):
             cache_file.write('{}|{}'.format('2018-04-01', cached_checksum))
 
         #  Assert the modified cache date is returned
-        media_file_object.load_checksum_from_cache()
+        media_file_object.load_cache_file()
         self.assertEqual(media_file_object.cached_date, '2018-04-01')
 
         #  Assert the cache is flagged as 'stale'
-        self.assertTrue(media_file_object.cache_is_stale)
+        self.assertTrue(media_file_object.cache_is_stale(stale_cache_days=90))

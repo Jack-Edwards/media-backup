@@ -3,7 +3,6 @@ import os
 import shutil
 import tempfile
 
-
 class MockMediaFile(object):
     def __init__(self, name: str, path: str, library_name: str, source: bool):
         self.name = name

@@ -1,5 +1,6 @@
 import os
 import shutil
+from functools import wraps
 
 from .media_file import MediaFile
 from .result import Result
@@ -34,13 +35,27 @@ class Library(object):
             '.wtv'
         ]
 
-    def load_all_media(self):
+    def backup_only(function):
+        @wraps(function)
+        def function_wrapper(inst, *args, **kwargs):
+            assert not inst.source
+            return function(inst, *args, **kwargs)
+        return function_wrapper
+
+    def source_only(function):
+        @wraps(function)
+        def function_wrapper(inst, *args, **kwargs):
+            assert inst.source
+            return function(inst, *args, **kwargs)
+        return function_wrapper
+
+    def load_all_media(self, callback_on_progress):
         #  Description
         #    Populate 'self.media' with all media files in the library
         #  Requires
         #    'self.path' must exist on the filesystem
         #  Guarantees
-        #    All media files with 'allowed_media_extensions_ are added to 'self.media'
+        #    All media files with 'allowed_media_extensions' are added to 'self.media'
 
         #  Reset 'self.media'
         #  Old members may no longer exist
@@ -54,8 +69,13 @@ class Library(object):
                         filepath = os.path.join(dirpath, filename)
                         filepath_in_library = filepath.replace(self.path + os.sep, '')
                         self.media[filepath_in_library] = MediaFile(filepath, filepath_in_library, self.source)
-
-        return Result(subject=self.path, success=True)
+                        if callback_on_progress:
+                            callback_on_progress(
+                                mirror_is_source=self.source,
+                                library_name=self.name,
+                                current_media_count=len(self.media)
+                            )
+        return True
 
     def copy_media(self, source_filepath, path_in_library, source_checksum):
         #  Description
@@ -93,8 +113,8 @@ class Library(object):
 
                 #  Verify the source and copied files' checksums match
                 if self.media[path_in_library].real_checksum == source_checksum:
-                    self.media[path_in_library].save_checksum_to_cache(overwrite=False)
-                    self.media[path_in_library].load_checksum_from_cache()
+                    self.media[path_in_library].save_cache_file(overwrite=False)
+                    self.media[path_in_library].load_cache_file()
                     return Result(subject=source_filepath, success=True)
                 else:
                     #  Something went wrong, undo the copy
@@ -133,66 +153,57 @@ class Library(object):
 
         #  Verify the file exists
         media_file = self.media[path_in_library]
-        if os.path.exists(media_file.path):
-            if os.path.exists(media_file.cache_file):
-                os.remove(media_file.cache_file)
-            os.remove(media_file.path)
-            self.media.pop(path_in_library)
-        else:
-            raise FileNotFoundError('File does not exist')
+        assert os.path.exists(media_file.path)
+        if os.path.exists(media_file.cache_file):
+            os.remove(media_file.cache_file)
+        os.remove(media_file.path)
+        self.media.pop(path_in_library)
 
-    def yield_empty_directories(self):
+    def get_empty_directories(self):
         #  Description
-        #    A generator to return the path of all empty directories in the library
+        #    Get all empty directories in the library
         #  Requires
         #    'self.path' must exist on the filesystem
-        #    A directory is not added or removed until the generator is finished
         #  Guarantees
-        #    The path to all empty directories in 'self.path' is returned, one at a time
+        #    The path to all empty directories in 'self.path' is returned in the form of a list
 
+        list_of_empty_directories = []
         for dirpath, dirnames, filenames in os.walk(self.path):
             if len(dirnames) == 0 and len(filenames) == 0:
-                yield dirpath
+                #  Don't delete the library itself
+                if dirpath is not self.path:
+                    list_of_empty_directories.append(dirpath)
+        return list_of_empty_directories
 
     def delete_empty_directories(self):
         #  Description
         #    Delete all empty directories in the library
-        #    A list of deleted directories is returned
         #  Requires
         #    'self.path' must exist on the filesystem
         #  Guarantees
         #    All empty directories under 'self.path' are removed from the disc
         #    An 'empty' directory has no files or sub-directories
-        #    A list of deleted directories is returned
         #  Implementation Notes
         #    Reason for the 'while' loop is for case where deleting a directory
         #    creates an empty directory
         
-        deleted_directories = list()
         while True:
-            empty_directories = list()
-            for directory in self.yield_empty_directories():
-                empty_directories.append(directory)
-
+            empty_directories = self.get_empty_directories()
             if len(empty_directories) > 0:
                 for directory in empty_directories:
                     os.rmdir(directory)
-                    deleted_directories.append(directory)
             else:
                 break
-        
-        return deleted_directories
 
-    def yield_orphan_cache_files(self):
+    def get_orphan_cache_files(self):
         #  Description
-        #    A generator to return the path of all cache files without
-        #    a matching media file in the library
+        #    Get all orphan cache files in the library
         #  Requires
         #    'self.path' must exist on the filesystem
-        #    A cache file is not added or removed until the generator is finished
         #  Guarantees
-        #    The path to all orphan cache files in 'self.path' is returned, one at a time
+        #    The path to all orphan cache files in 'self.path' is returned in the form of a list
 
+        list_of_orphan_cache_files = []
         for dirpath, _, filenames in os.walk(self.path):
             if '.cache' in dirpath:
                 for cache_file in filenames:
@@ -201,78 +212,105 @@ class Library(object):
                         media_file_name = os.path.splitext(cache_file)[0]
                         media_file_path = os.path.join(parent_directory, media_file_name)
                         if not os.path.exists(media_file_path):
-                            yield os.path.join(dirpath, cache_file)
+                            list_of_orphan_cache_files.append(os.path.join(dirpath, cache_file))
+        return list_of_orphan_cache_files
 
     def delete_orphan_cache_files(self):
         #  Description
         #    Delete all cache files without a matching media file in the library
-        #    A list of deleted files is returned
         #  Requires
         #    'self.path' must exist on the filesystem
         #  Guarantees
         #    All orphan cache files under 'self.path' are removed from the disc
-        #    The list of deleted files is returned
 
-        orphan_cache_files = list()
-        for cache_file in self.yield_orphan_cache_files():
-            orphan_cache_files.append(cache_file)
-
-        for cache_file in orphan_cache_files:
+        for cache_file in self.get_orphan_cache_files():
             os.remove(cache_file)
+
+    def get_stale_cache_media(self, stale_cache_days):
+        stale_cache_media = []
+        for path_in_library in self.media:
+            if self.media[path_in_library].cache_is_stale(stale_cache_days):
+                stale_cache_media.append(path_in_library)
+        return stale_cache_media
         
-        return orphan_cache_files
+    def refresh_stale_cache_files(self, stale_cache_days, callback_on_start, callback_on_progress):
+        stale_cache_media = self.get_stale_cache_media(stale_cache_days)
+        if callback_on_start:
+            callback_on_start(
+                mirror_is_source=self.source,
+                total_files_to_refresh=len(stale_cache_media),
+                library_name=self.name
+            )
+        for index, path_in_library in enumerate(stale_cache_media):
+            if callback_on_progress:
+                callback_on_progress(
+                    total_files_to_refresh=len(stale_cache_media),
+                    file_number=index + 1,
+                    mirror_is_source=self.source,
+                    file_name=path_in_library,
+                    library_name=self.name
+                )
+            media = self.media[path_in_library]
+            if media.real_checksum == media.cached_checksum:
+                media.refresh_cache_file()
 
-    def yield_media_with_stale_cache_file(self):
-        #  Description
-        #    A generator to return a MediaFile object for media files with
-        #    stale cache/checksum files
-        #  Requires
-        #    'self.path' must exist on the filesystem
-        #    'self.load_all_media()' has been called and 'self.media' is populated
-        #    A media file is not added or removed until the generator is finished
-        #  Guarantees
-        #    A MediaFile object is returned for each media file with a stale
-        #    cache/checksum file, one at a time
+    def get_local_checksum_discrepancies(self, cache_days):
+        local_checksum_discrepancies = []
+        for path_in_library in self.get_stale_cache_media(cache_days):
+            media = self.media[path_in_library]
+            if media.real_checksum != media.cached_checksum:
+                local_checksum_discrepancies.append(path_in_library)
+        return local_checksum_discrepancies
 
-        for media_file in self.media.values():
-            if media_file.cache_is_stale:
-                yield media_file
+    @source_only
+    def get_mirror_checksum_discrepancies(self, backup_library):
+        mirror_checksum_discrepancies = []
+        for path_in_library in self.media:
+            if backup_library[path_in_library]:
+                source_media = self.media[path_in_library]
+                backup_media = backup_library.media[path_in_library]
+                if source_media.cached_checksum != backup_media.cached_checksum:
+                    mirror_checksum_discrepancies.append(path_in_library)
+        return mirror_checksum_discrepancies
 
-    def refresh_stale_cache_files(self):
-        #  Description
-        #    Set today's date in old cache files
-        #  Requires
-        #    'self.path' must exist on the filesystem
-        #    'self.load_all_media()' has been called and 'self.media' is populated
-        #  Guarantees
-        #    Old cache files will have today's date set, if the media_file's
-        #    real_checksum matches it's cached_checksum
+    @backup_only
+    def get_media_not_backed_up(self, source_library):
+        list_of_media_not_backed_up = []
+        for path_in_library in source_library.media:
+            if path_in_library not in self.media:
+                list_of_media_not_backed_up.append(path_in_library)
+        return list_of_media_not_backed_up
 
-        for media_file in self.yield_media_with_stale_cache_file():
-            if media_file.real_and_cached_checksums_match:
-                yield media_file.path
-                media_file.refresh_cache()
-
-    def yield_media_with_local_checksum_discrepancy(self):
-        #  Description
-        #    A generator to return a MediaFile object for media files
-        #    with different 'real_checksum' and 'cached_checksum' values
-        #  Requires
-        #    'self.path' must exist on the filesystem
-        #    'self.load_all_media()' has been called and 'self.media' is populated
-        #    'self.refresh_stale_cache_files()' has already been run
-        #  Guarantees
-        #    A MediaFile object is returned for each media file with different
-        #    'real_checksum' and 'cached_checksum' values, one at a time
-        #
-        #    MediaFile objects which have not had a 'real_checksum' value set are not checked
-        #    and will not be returned
-        #  Implementation Notes
-        #    This will only return MediaFile objects which have a 'real_checksum' value set.
-        #    This improves performance, and is the whole point of maintaining and refreshing
-        #    the cache files; 'real_checksum' is calculated and set when refreshing stale cache files
-
-        for media in self.media.values():
-            if media.real_checksum_has_been_set:
-                if not media.real_and_cached_checksums_match:
-                    yield media
+    @backup_only
+    def backup_new_media(self, source_library, callback_on_start, callback_on_progress, callback_on_error):
+        media_to_backup = self.get_media_not_backed_up(source_library)
+        #  Callback on start of method
+        if callback_on_start:
+            callback_on_start(
+                total_files_to_backup=len(media_to_backup),
+                library_name=self.name
+            )
+        for index, path_in_library in enumerate(media_to_backup):
+            if path_in_library not in self.media:
+                #  Callback on new file to backup
+                if callback_on_progress:
+                    callback_on_progress(
+                        total_files_to_backup=len(media_to_backup),
+                        file_number=index + 1,
+                        file_name=path_in_library,
+                        library_name=self.name
+                    )
+                source_media = source_library.media[path_in_library]
+                copy_result = self.copy_media(
+                    source_filepath=source_media.path,
+                    path_in_library=path_in_library,
+                    source_checksum=source_media.real_checksum
+                )
+                #  Handle copy failure
+                if callback_on_error:
+                    if not copy_result.success:
+                        callback_on_error(
+                            file_name=path_in_library,
+                            library_name=self.name,
+                            error_message=copy_result.message
+                        )

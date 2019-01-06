@@ -1,5 +1,6 @@
 {
-  "source_path": "/mnt/PLEX Media",
-  "backup_path": "/media/jack/PLEX Media - Bac",
-  "libraries": [ "Movies", "Music", "TV Shows" ]
+  "source_path": "/home/jack/Documents/MediaBackupSandbox/Source",
+  "backup_path": "/home/jack/Documents/MediaBackupSandbox/Backup",
+  "libraries": [ "Movies", "Music", "TV Shows" ],
+  "days_before_cache_is_stale": 90
 }
