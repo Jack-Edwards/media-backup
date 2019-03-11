@@ -96,6 +96,16 @@ class MediaFile(object):
     def cached_mtime(self, value):
         self._cached_mtime = value
 
+    @property
+    def cached_size(self):
+        if self._cached_size is None:
+            self.load_cache_file()
+        return self._cached_size
+
+    @cached_size.setter
+    def cached_size(self, value):
+        self._cached_size = value
+
     #  Determine whether the cache file is stale, given a number of "stale_cache_days"
     def cache_is_stale(self, stale_cache_days):
         expiration_date = datetime.date.today() - datetime.timedelta(days=stale_cache_days)

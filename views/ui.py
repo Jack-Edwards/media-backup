@@ -86,7 +86,7 @@ class UI(object):
                 print('\nScan finished')
                 print('')
             elif result is '4':
-                print('\m=== Resolve Local Checksum Discrepancies ===')
+                print('\n=== Resolve Local Checksum Discrepancies ===')
                 time.sleep(1)
                 print('Reloading config: {}\n'.format(self.config_file_path))
                 self.load_controller()
@@ -97,7 +97,7 @@ class UI(object):
                 self.empty_directory_count = self.controller.get_empty_directory_count()
                 print('')
             elif result is '5':
-                print('\m=== Resolve Mirror Checksum Discrepancies ===')
+                print('\n=== Resolve Mirror Checksum Discrepancies ===')
                 time.sleep(1)
                 print('Reloading config: {}\n'.format(self.config_file_path))
                 self.load_controller()
